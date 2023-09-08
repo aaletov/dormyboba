@@ -1,3 +1,3 @@
 # Login business process
 
-![diagram](login.svg)
+![diagram](register.svg)
