@@ -1,9 +1,8 @@
 import getopt
 import sys
 import requests
-from xml.etree import ElementTree
 
-def convert(docType: str, filename: str) -> ElementTree.ElementTree:
+def convert(docType: str, filename: str) -> str:
     if not docType in {"mermaid", "bpmn"}:
         raise RuntimeError("Unsupported docType: ", docType)
     
@@ -18,12 +17,11 @@ def convert(docType: str, filename: str) -> ElementTree.ElementTree:
     }
 
     r = requests.post('http://0.0.0.0:8000/', json=body)
-    
+
     if r.status_code != 200:
         raise RuntimeError("Failed to convert doc: ", str(r.content))
 
-    element = ElementTree.fromstring(r.content)
-    return ElementTree.ElementTree(element)
+    return bytes.decode(r.content, encoding="utf8")
 
 if __name__ == "__main__":
     argumentList = sys.argv[1:]
@@ -49,8 +47,9 @@ if __name__ == "__main__":
         exit(1)
 
     try:
-        et = convert(docType, filename)
-        et.write(outFile, encoding="utf8")
+        content = convert(docType, filename)
+        with open(outFile, "w", encoding="utf8") as file:
+            file.write(content)
 
     except RuntimeError as err:
         print(str(err))
