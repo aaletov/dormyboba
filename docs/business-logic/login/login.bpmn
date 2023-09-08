@@ -16,25 +16,27 @@
     </intermediateThrowEvent>
     <userTask id="Activity_1f3a86h" name="User logins via Telegram">
       <incoming>Flow_0uttq08</incoming>
-      <outgoing>Flow_1vhrd28</outgoing>
-      <outgoing>Flow_1h0k94h</outgoing>
+      <outgoing>Flow_1u2rhs5</outgoing>
     </userTask>
     <dataObjectReference id="DataObjectReference_1le1ofa" name="id&#10;first_name&#10;last_name&#10;username&#10;photo_url&#10;auth_date&#10;hash" dataObjectRef="DataObject_0yv0110" />
     <dataObject id="DataObject_0yv0110" />
     <serviceTask id="Activity_1svlfcy" name="Send user info to login service">
-      <incoming>Flow_1vhrd28</incoming>
-      <dataOutputAssociation id="DataOutputAssociation_0ojvsjw">
-        <targetRef>DataObjectReference_1le1ofa</targetRef>
-      </dataOutputAssociation>
+      <incoming>Flow_1u2rhs5</incoming>
+      <outgoing>Flow_0bqr007</outgoing>
+      <property id="Property_0fdcbjx" name="__targetRef_placeholder" />
+      <dataInputAssociation id="DataInputAssociation_0qxldsg">
+        <sourceRef>DataObjectReference_1le1ofa</sourceRef>
+        <targetRef>Property_0fdcbjx</targetRef>
+      </dataInputAssociation>
     </serviceTask>
     <endEvent id="Event_13hfdtn" name="Greet user in bot chat">
-      <incoming>Flow_1h0k94h</incoming>
+      <incoming>Flow_0bqr007</incoming>
       <messageEventDefinition id="MessageEventDefinition_1ds9f51" />
     </endEvent>
     <sequenceFlow id="Flow_1lww9ps" sourceRef="Event_0r03hvk" targetRef="Event_0eu7hch" />
     <sequenceFlow id="Flow_0uttq08" sourceRef="Event_0eu7hch" targetRef="Activity_1f3a86h" />
-    <sequenceFlow id="Flow_1vhrd28" sourceRef="Activity_1f3a86h" targetRef="Activity_1svlfcy" />
-    <sequenceFlow id="Flow_1h0k94h" sourceRef="Activity_1f3a86h" targetRef="Event_13hfdtn" />
+    <sequenceFlow id="Flow_1u2rhs5" sourceRef="Activity_1f3a86h" targetRef="Activity_1svlfcy" />
+    <sequenceFlow id="Flow_0bqr007" sourceRef="Activity_1svlfcy" targetRef="Event_13hfdtn" />
     <textAnnotation id="TextAnnotation_0lsl3di">
       <text>Telegram Login Widget</text>
     </textAnnotation>
@@ -47,84 +49,85 @@
   <bpmndi:BPMNDiagram id="BpmnDiagram_1">
     <bpmndi:BPMNPlane id="BpmnPlane_1" bpmnElement="Collaboration_1fidnui">
       <bpmndi:BPMNShape id="Participant_02rqyus_di" bpmnElement="Participant_02rqyus" isHorizontal="true">
-        <omgdc:Bounds x="160" y="180" width="530" height="373" />
+        <omgdc:Bounds x="160" y="180" width="730" height="273" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="TextAnnotation_0lsl3di_di" bpmnElement="TextAnnotation_0lsl3di">
-        <omgdc:Bounds x="520" y="370" width="100.00000678671123" height="40.7709414381023" />
+        <omgdc:Bounds x="300" y="279" width="100" height="41" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="TextAnnotation_09sakae_di" bpmnElement="TextAnnotation_09sakae">
-        <omgdc:Bounds x="550" y="200" width="99.9999973737024" height="40.44750430292599" />
+        <omgdc:Bounds x="490" y="280" width="100" height="40" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Event_0r03hvk_di" bpmnElement="Event_0r03hvk">
-        <omgdc:Bounds x="232" y="472" width="36" height="36" />
+        <omgdc:Bounds x="232" y="372" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="213" y="515" width="75" height="27" />
+          <omgdc:Bounds x="213" y="415" width="75" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Event_0eu7hch_di" bpmnElement="Event_0eu7hch">
-        <omgdc:Bounds x="322" y="472" width="36" height="36" />
+        <omgdc:Bounds x="322" y="372" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="308" y="515" width="65" height="27" />
+          <omgdc:Bounds x="308" y="415" width="65" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_1f3a86h_di" bpmnElement="Activity_1f3a86h">
-        <omgdc:Bounds x="420" y="450" width="100" height="80" />
+        <omgdc:Bounds x="420" y="350" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="DataObjectReference_1le1ofa_di" bpmnElement="DataObjectReference_1le1ofa">
-        <omgdc:Bounds x="312" y="265" width="36" height="50" />
+        <omgdc:Bounds x="722" y="225" width="36" height="50" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="304" y="322" width="52" height="93" />
+          <omgdc:Bounds x="764" y="204.5" width="52" height="93" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_1svlfcy_di" bpmnElement="Activity_1svlfcy">
-        <omgdc:Bounds x="420" y="250" width="100" height="80" />
+        <omgdc:Bounds x="600" y="350" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Event_13hfdtn_di" bpmnElement="Event_13hfdtn">
-        <omgdc:Bounds x="582" y="472" width="36" height="36" />
+        <omgdc:Bounds x="782" y="372" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="559" y="515" width="82" height="27" />
+          <omgdc:Bounds x="759" y="415" width="82" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Association_01rmo9t_di" bpmnElement="Association_01rmo9t">
-        <omgdi:waypoint x="508" y="450" />
-        <omgdi:waypoint x="545" y="411" />
+        <omgdi:waypoint x="424" y="353" />
+        <omgdi:waypoint x="383" y="320" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Association_00axz3b_di" bpmnElement="Association_00axz3b">
-        <omgdi:waypoint x="520" y="261" />
-        <omgdi:waypoint x="556" y="240" />
+        <omgdi:waypoint x="606" y="351" />
+        <omgdi:waypoint x="570" y="320" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_1lww9ps_di" bpmnElement="Flow_1lww9ps">
-        <omgdi:waypoint x="268" y="490" />
-        <omgdi:waypoint x="322" y="490" />
+        <omgdi:waypoint x="268" y="390" />
+        <omgdi:waypoint x="322" y="390" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_0uttq08_di" bpmnElement="Flow_0uttq08">
-        <omgdi:waypoint x="358" y="490" />
-        <omgdi:waypoint x="420" y="490" />
+        <omgdi:waypoint x="358" y="390" />
+        <omgdi:waypoint x="420" y="390" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1vhrd28_di" bpmnElement="Flow_1vhrd28">
-        <omgdi:waypoint x="470" y="450" />
-        <omgdi:waypoint x="470" y="330" />
+      <bpmndi:BPMNEdge id="Flow_1u2rhs5_di" bpmnElement="Flow_1u2rhs5">
+        <omgdi:waypoint x="520" y="390" />
+        <omgdi:waypoint x="600" y="390" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1h0k94h_di" bpmnElement="Flow_1h0k94h">
-        <omgdi:waypoint x="520" y="490" />
-        <omgdi:waypoint x="582" y="490" />
+      <bpmndi:BPMNEdge id="Flow_0bqr007_di" bpmnElement="Flow_0bqr007">
+        <omgdi:waypoint x="700" y="390" />
+        <omgdi:waypoint x="782" y="390" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Participant_00dot4k_di" bpmnElement="Participant_00dot4k" isHorizontal="true">
-        <omgdc:Bounds x="160" y="80" width="530" height="60" />
+        <omgdc:Bounds x="160" y="80" width="730" height="60" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="DataOutputAssociation_0ojvsjw_di" bpmnElement="DataOutputAssociation_0ojvsjw">
-        <omgdi:waypoint x="420" y="290" />
-        <omgdi:waypoint x="348" y="290" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_177t69g_di" bpmnElement="Flow_177t69g">
-        <omgdi:waypoint x="470" y="250" />
-        <omgdi:waypoint x="470" y="140" />
+        <omgdi:waypoint x="650" y="350" />
+        <omgdi:waypoint x="650" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataInputAssociation_0qxldsg_di" bpmnElement="DataInputAssociation_0qxldsg">
+        <omgdi:waypoint x="722" y="250" />
+        <omgdi:waypoint x="650" y="250" />
+        <omgdi:waypoint x="650" y="350" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
