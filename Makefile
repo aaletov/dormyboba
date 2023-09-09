@@ -2,7 +2,7 @@ TAG := $(shell git rev-parse --short HEAD)
 
 .PHONY: image-builder
 image-builder:
-	docker build -f Dockerfile.kroki -t docs-builder:$(TAG)
+	docker build -f Dockerfile.kroki . -t docs-builder:$(TAG)
 	docker tag docs-builder:$(TAG) docs-builder:latest
 
 bps := $(filter-out Makefile,$(wildcard docs/business-logic/*))
