@@ -19,7 +19,7 @@ jobs:
     - name: Build bpmn
       run: make docs
       
-    - run: pwd
+    - run: pwd && ls -al
     
     - name: Archive bpmn
       uses: actions/upload-artifact@v3.1.3
