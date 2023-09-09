@@ -19,4 +19,6 @@ Boundary(dataStore, "DataStore") {
 Rel(registerPage, registerController, "Sends credentionals to")
 Rel(registerController, registerPage, "Recieves registration view")
 
-UpdateRelStyle(botBackend, registerController, $offsetY="40")
+UpdateElementStyle(botBackend, $offsetY="80")
+UpdateRelStyle(registerController, registerPage, $offsetX="-40")
+UpdateRelStyle(registerPage, registerController, $offsetX="40")
