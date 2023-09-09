@@ -18,3 +18,10 @@ jobs:
 
     - name: Build bpmn
       run: make docs
+
+  hadolint_check:
+    runs-on: ubuntu-22.04 
+    steps:
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.*
