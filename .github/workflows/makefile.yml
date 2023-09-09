@@ -28,6 +28,7 @@ jobs:
           dockerfile: Dockerfile.kroki
           output-file: /tmp/hadolint.out
           no-fail: true
+      - run: ls -al /tmp
       - uses: actions/upload-artifact@v3.1.3
         with:
           name: hadolint_report
