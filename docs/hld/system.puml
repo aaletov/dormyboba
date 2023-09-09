@@ -1,0 +1,8 @@
+@startuml System diagram for dormyboba project
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+skinparam defaultFontName Open Sans
+
+Person(studentA, "Student A", "A student")
+Person(councilmemA, "CouncilMem A", "A student council member")
+@enduml

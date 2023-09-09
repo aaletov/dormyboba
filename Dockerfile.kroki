@@ -2,5 +2,6 @@ FROM golang:1.21-alpine3.18 as builder
 RUN go install github.com/yuzutech/kroki-cli/cmd/kroki@latest && \
   mv $(go env GOPATH)/bin/kroki /kroki
 FROM alpine:3.18
+RUN apk add --update fontconfig ttf-opensans
 COPY --from=builder /kroki .
 ENTRYPOINT ["/kroki"]
