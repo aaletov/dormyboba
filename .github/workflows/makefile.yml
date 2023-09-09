@@ -27,3 +27,8 @@ jobs:
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile.kroki
+          output-file: /tmp/hadolint.out
+      - uses: actions/upload-artifact@v3.1.3
+        with:
+          name: hadolint_report
+          path: /tmp/hadolint.out
