@@ -22,6 +22,7 @@ jobs:
   hadolint_check:
     runs-on: ubuntu-22.04 
     steps:
+      - run: ls -al
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile.kroki
