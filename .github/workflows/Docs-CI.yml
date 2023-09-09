@@ -1,4 +1,4 @@
-name: dCI
+name: Docs-CI
 
 on:
   push:
