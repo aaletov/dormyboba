@@ -19,7 +19,7 @@ jobs:
     - name: Build bpmn
       run: make docs
       
-    - run: pwd && ls -al && ls -al docs/
+    - run: pwd && ls -al && ls -al docs/business-logic/ && ls -al docs/business-logic/register/ && ls -al docs/hld/
     
     - name: Archive bpmn
       uses: actions/upload-artifact@v3.1.3
