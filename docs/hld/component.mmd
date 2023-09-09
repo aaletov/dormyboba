@@ -6,9 +6,17 @@ Container(telegramBot, "Telegram Bot", "python", "Telegram bot interface")
 
 Container_Boundary(botBackend, "Bot Backend") {
   Component(registerController, "Register Controller", "", "Provides functionality related to registration. Returns register HTML page and handles data-onauth POST request")
-  Component(userService, "User service", "", "Provides functionality related to user management, i.e. registration and retrieving user information")
   Component(botComponent, "Bot Component", "", "Handles commands from user")
+  Component(userService, "User service", "", "Provides functionality related to user management, i.e. registration and retrieving user information")
+  Component(mailService, "Mail service", "", "Provides mailing functionality")
   Component(apiComponent, "API Component", "", "Provides access to Telegram API")
 }
 
-ContainerDb(db, "Database", "MongoDB", "Stores user info and invalidated secrets")
+Boundary(dataStore, "DataStore") {
+  ContainerDb(db, "Database", "MongoDB", "Stores user info and invalidated secrets")
+}
+
+Rel(registerPage, registerController, "Sends credentionals to")
+Rel(registerController, registerPage, "Recieves registration view")
+
+UpdateRelStyle(botBackend, registerController, $offsetY="40")
