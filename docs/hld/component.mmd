@@ -1,0 +1,14 @@
+C4Component
+title Component diagram for dormyboba project
+
+Container(registerPage, "Register Webpage", "html", "Static html page with Telegram Login Widget")
+Container(telegramBot, "Telegram Bot", "python", "Telegram bot interface")
+
+Container_Boundary(botBackend, "Bot Backend") {
+  Component(registerController, "Register Controller", "", "Provides functionality related to registration. Returns register HTML page and handles data-onauth POST request")
+  Component(userService, "User service", "", "Provides functionality related to user management, i.e. registration and retrieving user information")
+  Component(botComponent, "Bot Component", "", "Handles commands from user")
+  Component(apiComponent, "API Component", "", "Provides access to Telegram API")
+}
+
+ContainerDb(db, "Database", "MongoDB", "Stores user info and invalidated secrets")
