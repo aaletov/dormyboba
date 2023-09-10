@@ -1,9 +1,9 @@
+KROKI_CLI_IMAGE := "aapozd/kroki-cli:0.5.0-alpine3.17"
 TAG := $(shell git rev-parse --short HEAD)
 
-.PHONY: image-builder
+.PHONY: pull-kroki-cli-image
 image-builder:
-	docker build -f Dockerfile.kroki . -t docs-builder:$(TAG)
-	docker tag docs-builder:$(TAG) docs-builder:latest
+	docker pull ${KROKI_CLI_IMAGE}
 
 bps := $(wildcard docs/business-logic/*)
 bpmn_sources := $(foreach bp,$(bps),$(wildcard $(bp)/*.bpmn))
@@ -15,13 +15,13 @@ $(bp_svgs): %.svg: %.bpmn
 	docker run --rm \
 		-u $(shell id -u ${USER}):$(shell id -g ${USER}) \
 		-v $(shell pwd)/docs:/docs \
-		docs-builder:latest convert /$< -o /$@
+		${KROKI_CLI_IMAGE} convert /$< -o /$@
 
 $(hld_svgs): %.svg: %.puml
 	docker run --rm \
 		-u $(shell id -u ${USER}):$(shell id -g ${USER}) \
 		-v $(shell pwd)/docs:/docs \
-		docs-builder:latest convert /$< -o /$@
+		${KROKI_CLI_IMAGE} convert /$< -o /$@
 
 .PHONY: bpmn-all
 bpmn-all: $(bp_svgs)
