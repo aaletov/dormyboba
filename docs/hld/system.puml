@@ -16,7 +16,8 @@ System_Boundary(backend, "Backend") {
   Container(telegramBotService, "Telegram Bot Service", "Python", "Handles Telegram updates")
   Container(vkBotService, "Vk Bot Service", "Python", "Handles Vk updates")
   Container(dormybobaService, "Dormyboba Service", "Python", "Performs all logic")
-  ContainerDb(db, "Database", "MongoDB", "Stores user info and invalidated secrets")
+  Container(keyCloak, "KeyCloak", "", "Provides user management functionality")
+  ContainerDb(db, "Database", "PostgreSQL", "Stores user and group info")
 }
 
 Rel_D(studentA, registerPage, "Performs registration")
@@ -31,5 +32,7 @@ Rel_D(registerService, dormybobaService, "")
 Rel_D(telegramBotService, dormybobaService, "")
 Rel_D(vkBotService, dormybobaService, "")
 
+Rel_D(dormybobaService, keyCloak, "")
+Rel_D(keyCloak, db, "")
 Rel_D(dormybobaService, db, "CRUD")
 @enduml
