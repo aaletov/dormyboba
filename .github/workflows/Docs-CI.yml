@@ -1,0 +1,34 @@
+name: Docs-CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Build kroki image
+      run: make image-builder
+
+    - name: Build bpmn
+      run: make docs
+
+  hadolint_check:
+    runs-on: ubuntu-22.04 
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.kroki
+          output-file: hadolint.txt
+          no-fail: true
+      - uses: actions/upload-artifact@v3.1.3
+        with:
+          name: hadolint_report
+          path: hadolint.txt

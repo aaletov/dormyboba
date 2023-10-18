@@ -1,0 +1,38 @@
+@startuml System diagram for dormyboba project
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+skinparam defaultFontName Open Sans
+
+Person(studentA, "Student A", "A student")
+Person(councilMemA, "CouncilMem A", "A student council member")
+
+Container(registerPage, "Register Webpage", "html", "Static html page with login options")
+Container(telegramBot, "Telegram Bot", "", "Telegram bot interface")
+Container(vkBot, "Vk Bot", "", "Vk bot interface")
+
+System_Boundary(backend, "Backend") {
+  Container(registerService, "Register Service", "Python", "Handles user registration")
+  Container(telegramBotService, "Telegram Bot Service", "Python", "Handles Telegram updates")
+  Container(vkBotService, "Vk Bot Service", "Python", "Handles Vk updates")
+  Container(dormybobaService, "Dormyboba Service", "Python", "Performs all logic")
+  Container(keyCloak, "KeyCloak", "", "Provides user management functionality")
+  ContainerDb(db, "Database", "PostgreSQL", "Stores user and group info")
+}
+
+Rel_D(studentA, registerPage, "Performs registration")
+Rel_D(councilMemA, telegramBot, "Initiates registration")
+Rel_D(councilMemA, vkBot, "Initiates registration")
+
+Rel_D(registerPage, registerService, "Sends user info")
+Rel_D(telegramBot, telegramBotService, "Sends Telegram updates")
+Rel_D(vkBot, vkBotService, "Sends Vk updates")
+
+Rel_D(registerService, dormybobaService, "")
+Rel_D(telegramBotService, dormybobaService, "")
+Rel_D(vkBotService, dormybobaService, "")
+
+Rel_D(dormybobaService, keyCloak, "")
+Rel_D(keyCloak, db, "")
+Rel_D(dormybobaService, db, "CRUD")
+@enduml
