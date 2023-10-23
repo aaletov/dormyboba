@@ -1,14 +1,16 @@
 import os
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from vkbottle.bot import Bot, Message
 
-async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(f'Hello {update.effective_user.first_name}')
+def run_bot(token: str) -> None:
+    bot = Bot(token=token)
+    @bot.on.message(test="/hello")
+    async def hello(message: Message) -> None:
+        users_info = await bot.api.users.get(message.from_id)
+        await message.answer("Привет, {}".format(users_info[0].first_name))
+
+    bot.run_forever()
 
 def main():
-    TG_TOKEN: str = os.environ["TG_TOKEN"]
+    VK_TOKEN: str = os.environ["VK_TOKEN"]
 
-    app = ApplicationBuilder().token(TG_TOKEN).build()
-    app.add_handler(CommandHandler("hello", hello))
-    app.run_polling()
-
+    run_bot(VK_TOKEN)
