@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package api;
+
+enum Role {
+    ADMIN_ROLE = 0;
+    CLIENT_ROLE = 1;
+}
+
+enum Platform {
+    VK = 0;
+}
+
+message ClientId {
+    Platform platform = 1;
+    string id = 2;
+}
+
+message GetRoleRequest {
+    ClientId id = 1;
+}
+
+message GetRoleResponse {
+    Role role = 1;
+}
+
+service AuthService {
+    rpc GetRole (GetRoleRequest) returns (GetRoleResponse) {}
+}

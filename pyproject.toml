@@ -10,6 +10,9 @@ python = "^3.9"
 vkbottle = "^4.3.12"
 
 
+[tool.poetry.group.dev.dependencies]
+grpcio-tools = "^1.59.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
