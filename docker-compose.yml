@@ -1,17 +1,12 @@
 version: "3.1"
 
 services:
-  # bot:
-  #   image: "dormyboba:latest"
   postgresql:
-    image: "postgres:16.0-alpine3.18"
+    image: "pgtest:633d1d-062166"
     ports:
       - "5432:5432"
     environment:
      POSTGRES_PASSWORD: "${PG_PASSWORD}"
-    volumes:
-      - "${DORMYBOBA_HOME}/test/init.sql:/docker-entrypoint-initdb.d/init.sql"
-      # - "/home/snusoedik:/docker-entrypoint-initdb.d"
   keycloak:
     image: "bitnami/keycloak:22.0.4-debian-11-r3"
     ports:
