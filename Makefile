@@ -35,10 +35,6 @@ docs: bpmn-all puml-all
 short_hash = $(shell hashdeep -r -l $(1) | sort | md5sum | grep -Eo '^[0-9a-z]{6}')
 time = $(shell date +%s | grep -Eo '[0-9]{6}$$')
 
-.PHONY: bebr
-bebr:
-	@echo $(call time)
-
 init_hash=$(call short_hash,./test/init)
 pg_time=$(call time)
 .PHONY: pg-image
@@ -47,23 +43,3 @@ pg-image:
 		--build-arg INIT=test/init \
 		-t pgtest:${init_hash}-${pg_time} .
 	docker tag pgtest:${init_hash}-${pg_time} pgtest:latest
-
-PB_ABS := "https://github.com/protocolbuffers/protobuf/releases"
-PROTOC_VERSION := "24.4"
-PROTOC_ARCHIVE := "protoc-${PROTOC_VERSION}-linux-x86_64.zip"
-PB_REL := "download/v${PROTOC_VERSION}/${PROTOC_ARCHIVE}"
-PB_PATH = ${PB_ABS}/${PB_REL}
-
-.PHONY: install-protoc
-install-protoc:
-	curl -LO ${PB_PATH}
-	unzip ${PROTOC_ARCHIVE} -d ${HOME}/.local
-	rm ${PROTOC_ARCHIVE}
-
-.PHONY: python-gen
-python-gen:
-	poetry run python3 -m grpc_tools.protoc \
-		-I./api --python_out=./api \
-		--pyi_out=./api \
-		--grpc_python_out=./api \
-		./api/apiv1.proto 
