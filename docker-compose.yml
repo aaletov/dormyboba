@@ -2,7 +2,7 @@ version: "3.1"
 
 services:
   postgresql:
-    image: "pgtest:633d1d-062166"
+    image: "pgtest:d41d8c-747090"
     ports:
       - "5432:5432"
     environment:
@@ -10,6 +10,10 @@ services:
   keycloak:
     image: "bitnami/keycloak:22.0.4-debian-11-r3"
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       KEYCLOAK_DATABASE_PASSWORD: "${PG_PASSWORD}"
+  dormyboba-auth:
+    image: "dormyboba-auth:bbf8ca-881240"
+    ports:
+      - "8082:8082"
