@@ -31,3 +31,15 @@ puml-all: $(hld_svgs)
 
 .PHONY: docs
 docs: bpmn-all puml-all
+
+short_hash = $(shell hashdeep -r -l $(1) | sort | md5sum | grep -Eo '^[0-9a-z]{6}')
+time = $(shell date +%s | grep -Eo '[0-9]{6}$$')
+
+init_hash=$(call short_hash,./test/init)
+pg_time=$(call time)
+.PHONY: pg-image
+pg-image:
+	docker build -f test/Dockerfile.pg \
+		--build-arg INIT=test/init \
+		-t pgtest:${init_hash}-${pg_time} .
+	docker tag pgtest:${init_hash}-${pg_time} pgtest:latest
