@@ -60,7 +60,7 @@ async def pending_title(message: Message) -> None:
 @queue_labeler.message(payload={"command": "queue_description"})
 async def queue_description(message: Message) -> None:
     await state_dispenser.set(message.peer_id, QueueState.PENDING_DESCRIPTION)
-    await message.answer("Задайте описание очереди", keyboard=KEYBOARD_QUEUE)
+    await message.answer("Задайте описание очереди")
 
 @queue_labeler.message(state=QueueState.PENDING_DESCRIPTION)
 async def pending_description(message: Message) -> None:
@@ -70,7 +70,7 @@ async def pending_description(message: Message) -> None:
 @queue_labeler.message(payload={"command": "queue_open"})
 async def queue_open(message: Message) -> None:
     await state_dispenser.set(message.peer_id, QueueState.PENDING_OPEN)
-    await message.answer("Задайте время открытия очереди", keyboard=KEYBOARD_QUEUE)
+    await message.answer("Задайте время открытия очереди")
 
 @queue_labeler.message(state=QueueState.PENDING_OPEN)
 async def pending_open(message: Message) -> None:
@@ -80,7 +80,7 @@ async def pending_open(message: Message) -> None:
 @queue_labeler.message(payload={"command": "queue_close"})
 async def queue_close(message: Message) -> None:
     await state_dispenser.set(message.peer_id, QueueState.PENDING_CLOSE)
-    await message.answer("Задайте время закрытия очереди", keyboard=KEYBOARD_QUEUE)
+    await message.answer("Задайте время закрытия очереди")
 
 @queue_labeler.message(state=QueueState.PENDING_CLOSE)
 async def pending_close(message: Message) -> None:
