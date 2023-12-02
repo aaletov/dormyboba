@@ -1,6 +1,6 @@
 from vkbottle import Keyboard, Text, VKApps
 from vkbottle.bot import Message, BotLabeler
-from config import api, GROUP_ID, FORM_APP_ID, MAILING_HASH, DEFECT_HASH
+from config import api
 
 common_labeler = BotLabeler()
 
@@ -13,6 +13,8 @@ KEYBOARD_START = (
     .add(Text("Сообщить о проблеме", payload={"command": "defect"}))
     .row()
     .add(Text("Рассылка", payload={"command": "mailing"}))
+    .row()
+    .add(Text("Создать очередь", payload={"command": "queue"}))
     .get_json()
 )
 
