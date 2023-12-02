@@ -5,7 +5,7 @@ from .common import KEYBOARD_START, KEYBOARD_EMPTY
 
 mailing_labeler = BotLabeler()
 
-class MailingStates(BaseStateGroup):
+class MailingState(BaseStateGroup):
     PENDING_THEME = "pending_theme"
     PENDING_TEXT = "pending_text"
     PENDING_DATE = "pending_date"
@@ -21,25 +21,25 @@ async def forward_imp(message: Message) -> None:
 
 @mailing_labeler.message(payload={"command": "mailing"})
 async def mailing(message: Message) -> None:
-    await state_dispenser.set(message.peer_id, MailingStates.PENDING_THEME)
+    await state_dispenser.set(message.peer_id, MailingState.PENDING_THEME)
     await message.answer("Задайте тему сообщения", keyboard=KEYBOARD_EMPTY)
 
-@mailing_labeler.message(state=MailingStates.PENDING_THEME)
+@mailing_labeler.message(state=MailingState.PENDING_THEME)
 async def pending_theme(message: Message) -> None:
-    await state_dispenser.set(message.peer_id, MailingStates.PENDING_TEXT)
+    await state_dispenser.set(message.peer_id, MailingState.PENDING_TEXT)
     await message.answer("Задайте текст сообщения")
 
-@mailing_labeler.message(state=MailingStates.PENDING_TEXT)
+@mailing_labeler.message(state=MailingState.PENDING_TEXT)
 async def pending_text(message: Message) -> None:
-    await state_dispenser.set(message.peer_id, MailingStates.PENDING_DATE)
+    await state_dispenser.set(message.peer_id, MailingState.PENDING_DATE)
     await message.answer("Задайте дату отправки сообщения")
 
-@mailing_labeler.message(state=MailingStates.PENDING_DATE)
+@mailing_labeler.message(state=MailingState.PENDING_DATE)
 async def pending_date(message: Message) -> None:
-    await state_dispenser.set(message.peer_id, MailingStates.PENDING_TIME)
+    await state_dispenser.set(message.peer_id, MailingState.PENDING_TIME)
     await message.answer("Задайте время отправки сообщения")
 
-@mailing_labeler.message(state=MailingStates.PENDING_TIME)
+@mailing_labeler.message(state=MailingState.PENDING_TIME)
 async def pending_time(message: Message) -> None:
     await state_dispenser.delete(message.peer_id)
     await message.answer("Рассылка успешно создана!", keyboard=KEYBOARD_START)
