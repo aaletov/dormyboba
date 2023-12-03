@@ -1,11 +1,13 @@
 from vkbottle import Bot
 from config import api, state_dispenser, labeler
-from handlers import common_labeler, invite_labeler, mailing_labeler, queue_labeler
+from handlers import common_labeler, invite_labeler, mailing_labeler
+from handlers import queue_labeler, defect_labeler
 
 labeler.load(common_labeler)
 labeler.load(invite_labeler)
 labeler.load(mailing_labeler)
 labeler.load(queue_labeler)
+labeler.load(defect_labeler)
 
 bot = Bot(
     api=api,

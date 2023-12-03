@@ -15,7 +15,7 @@ KEYBOARD_MAILING = (
     Keyboard()
     .add(Text("Задать тему рассылки", payload={"command": "mailing_theme"}))
     .row()
-    .add(Text("Задать текст рассылки", payload={"command": "mailing_text"}))
+    .add(Text("Задать сообщение", payload={"command": "mailing_text"}))
     .row()
     .add(Text("Задать дату рассылки", payload={"command": "mailing_date"}))
     .row()
