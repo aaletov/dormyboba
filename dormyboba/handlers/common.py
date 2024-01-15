@@ -5,7 +5,7 @@ from vkbottle_types.events import MessageAllow
 from sqlalchemy import select, insert
 from sqlalchemy.orm import Session
 from ..config import api, state_dispenser, ALCHEMY_SESSION_KEY
-from ..model.generated import SentToken, User
+from ..model.generated import SentToken, User, Role
 from .limits import random_id
 from .token import Token
 
@@ -40,25 +40,29 @@ KEYBOARD_EMPTY = Keyboard().get_json()
 async def message_allow(event: MessageAllow) -> None:
     session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
     # ensure unique user_ids at db level
-    sent_token = session.execute(select(SentToken).where(SentToken.user_id == str(event.object.user_id))).first()[0]
+    stmt = select(SentToken).where(SentToken.user_id == event.object.user_id)
+    sent_token = session.execute(stmt).first()[0]
     sent_token = cast(str, sent_token)
     token_obj = None
     try:
         token_obj = Token.from_str(sent_token)
     except Exception as exc:
         print(exc)
-    else:
-        token_obj = cast(Token, token_obj)
-        
-        # multi-table insert, must use role table as well
-        user = User(user_id=event.object.user_id, role=0)
-        session.add(user)
-        session.commit()
 
-        await api.messages.send(message="Добро пожаловать!",
-                                    user_ids=[event.object.user_id],
-                                    random_id=random_id(),
-                                    keyboard=KEYBOARD_REGISTER)
+    token_obj = cast(Token, token_obj)
+    
+    # multi-table insert, must use role table as well
+    stmt = insert(User).from_select(
+        ['user_id', 'role_id'],
+        select(event.object.user_id, Role.role_id).where(Role.role_name == "student")
+    )
+    session.execute(stmt)
+    session.commit()
+
+    await api.messages.send(message="Добро пожаловать!",
+                                user_ids=[event.object.user_id],
+                                random_id=random_id(),
+                                keyboard=KEYBOARD_REGISTER)
 
 @common_labeler.message(command="help")
 @common_labeler.message(command="start")

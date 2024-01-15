@@ -5,46 +5,46 @@ CREATE DATABASE dormyboba;
 CREATE TABLE "sent_token" (
     "sent_token_id" serial PRIMARY KEY,
     "token" varchar(384),
-    "user_id" varchar(50)
+    "user_id" integer UNIQUE
 );
 
 CREATE TABLE "academic_type" (
-  "type_id" integer PRIMARY KEY,
+  "type_id" serial PRIMARY KEY,
   "name" varchar(50)
 );
 
 CREATE TABLE "institute" (
-  "institute_id" integer PRIMARY KEY,
+  "institute_id" serial PRIMARY KEY,
   "name" varchar(50)
+);
+
+CREATE TABLE "role" (
+  "role_id" serial PRIMARY KEY,
+  "role_name" varchar(50) UNIQUE
 );
 
 CREATE TABLE "user" (
   "user_id" integer PRIMARY KEY,
   "peer_id" integer UNIQUE,
-  "role" integer,
-  "academic_type_id" integer,
-  "institute_id" integer,
+  "role_id" integer REFERENCES "role" ("role_id"),
+  "academic_type_id" integer REFERENCES "academic_type" ("type_id"),
+  "institute_id" integer REFERENCES "institute" ("institute_id"),
   "year" integer,
   "group" varchar(5)
 );
 
-CREATE TABLE "role" (
-  "role_id" integer PRIMARY KEY,
-  "role_name" varchar(50)
-);
-
 CREATE TABLE "mailing" (
-  "mailing_id" integer PRIMARY KEY,
+  "mailing_id" serial PRIMARY KEY,
   "theme" varchar(256),
   "mailing_text" text,
   "at" timestamp,
-  "academic_type_id" integer,
-  "institute_id" integer,
+  "academic_type_id" integer REFERENCES "academic_type" ("type_id"),
+  "institute_id" integer REFERENCES "institute" ("institute_id"),
   "year" integer
 );
 
 CREATE TABLE "queue" (
-  "queue_id" integer PRIMARY KEY,
+  "queue_id" serial PRIMARY KEY,
   "conversation_id" integer,
   "name" varchar(256),
   "open" timestamp,
@@ -52,20 +52,9 @@ CREATE TABLE "queue" (
 );
 
 CREATE TABLE "queue_to_user" (
-  "user_id" integer,
-  "queue_id" integer
+  "user_id" integer REFERENCES "user" ("user_id"),
+  "queue_id" integer REFERENCES "queue" ("queue_id"),
+  PRIMARY KEY ("user_id", "queue_id")
 );
 
-ALTER TABLE "user" ADD FOREIGN KEY ("role") REFERENCES "role" ("role_id");
 
-ALTER TABLE "user" ADD FOREIGN KEY ("academic_type_id") REFERENCES "academic_type" ("type_id");
-
-ALTER TABLE "user" ADD FOREIGN KEY ("institute_id") REFERENCES "institute" ("institute_id");
-
-ALTER TABLE "mailing" ADD FOREIGN KEY ("academic_type_id") REFERENCES "academic_type" ("type_id");
-
-ALTER TABLE "mailing" ADD FOREIGN KEY ("institute_id") REFERENCES "institute" ("institute_id");
-
-ALTER TABLE "queue_to_user" ADD FOREIGN KEY ("user_id") REFERENCES "user" ("user_id");
-
-ALTER TABLE "queue_to_user" ADD FOREIGN KEY ("queue_id") REFERENCES "queue" ("queue_id");

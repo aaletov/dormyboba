@@ -53,23 +53,25 @@ class Role(Base):
     __tablename__ = 'role'
     __table_args__ = (
         PrimaryKeyConstraint('role_id', name='role_pkey'),
+        UniqueConstraint('role_name', name='role_role_name_key')
     )
 
     role_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     role_name: Mapped[Optional[str]] = mapped_column(String(50))
 
-    user: Mapped[List['User']] = relationship('User', back_populates='role_')
+    user: Mapped[List['User']] = relationship('User', back_populates='role')
 
 
 class SentToken(Base):
     __tablename__ = 'sent_token'
     __table_args__ = (
         PrimaryKeyConstraint('sent_token_id', name='sent_token_pkey'),
+        UniqueConstraint('user_id', name='sent_token_user_id_key')
     )
 
     sent_token_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     token: Mapped[Optional[str]] = mapped_column(String(384))
-    user_id: Mapped[Optional[str]] = mapped_column(String(50))
+    user_id: Mapped[Optional[int]] = mapped_column(Integer)
 
 
 class Mailing(Base):
@@ -97,14 +99,14 @@ class User(Base):
     __table_args__ = (
         ForeignKeyConstraint(['academic_type_id'], ['academic_type.type_id'], name='user_academic_type_id_fkey'),
         ForeignKeyConstraint(['institute_id'], ['institute.institute_id'], name='user_institute_id_fkey'),
-        ForeignKeyConstraint(['role'], ['role.role_id'], name='user_role_fkey'),
+        ForeignKeyConstraint(['role_id'], ['role.role_id'], name='user_role_id_fkey'),
         PrimaryKeyConstraint('user_id', name='user_pkey'),
         UniqueConstraint('peer_id', name='user_peer_id_key')
     )
 
     user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     peer_id: Mapped[Optional[int]] = mapped_column(Integer)
-    role: Mapped[Optional[int]] = mapped_column(Integer)
+    role_id: Mapped[Optional[int]] = mapped_column(Integer)
     academic_type_id: Mapped[Optional[int]] = mapped_column(Integer)
     institute_id: Mapped[Optional[int]] = mapped_column(Integer)
     year: Mapped[Optional[int]] = mapped_column(Integer)
@@ -113,13 +115,14 @@ class User(Base):
     queue: Mapped[List['Queue']] = relationship('Queue', secondary='queue_to_user', back_populates='user')
     academic_type: Mapped['AcademicType'] = relationship('AcademicType', back_populates='user')
     institute: Mapped['Institute'] = relationship('Institute', back_populates='user')
-    role_: Mapped['Role'] = relationship('Role', back_populates='user')
+    role: Mapped['Role'] = relationship('Role', back_populates='user')
 
 
 t_queue_to_user = Table(
     'queue_to_user', Base.metadata,
-    Column('user_id', Integer),
-    Column('queue_id', Integer),
+    Column('user_id', Integer, primary_key=True, nullable=False),
+    Column('queue_id', Integer, primary_key=True, nullable=False),
     ForeignKeyConstraint(['queue_id'], ['queue.queue_id'], name='queue_to_user_queue_id_fkey'),
-    ForeignKeyConstraint(['user_id'], ['user.user_id'], name='queue_to_user_user_id_fkey')
+    ForeignKeyConstraint(['user_id'], ['user.user_id'], name='queue_to_user_user_id_fkey'),
+    PrimaryKeyConstraint('user_id', 'queue_id', name='queue_to_user_pkey')
 )
