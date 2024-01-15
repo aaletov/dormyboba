@@ -8,3 +8,6 @@ GROUP_ID: str = os.environ["GROUP_ID"]
 api = API(VK_TOKEN)
 labeler = BotLabeler()
 state_dispenser = BuiltinStateDispenser()
+
+DB_URL = "postgresql+psycopg2://postgres:123456@postgresql/dormyboba"
+ALCHEMY_SESSION_KEY = "ALCHEMY_SESSION"

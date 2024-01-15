@@ -43,3 +43,14 @@ pg-image:
 		--build-arg INIT=test/init \
 		-t pgtest:${init_hash}-${pg_time} .
 	docker tag pgtest:${init_hash}-${pg_time} pgtest:latest
+
+PG_USER := postgres
+PG_PASSWORD := 123456
+PG_HOST := postgresql
+PG_PORT := 5432
+PG_DB := dormyboba
+ALCH_URL := postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DB}
+
+.PHONY: alchemy-models
+alchemy-models:
+	poetry run sqlacodegen ${ALCH_URL} --outfile dormyboba/model/generated.py
