@@ -6,7 +6,7 @@ from sqlalchemy import select, insert
 from sqlalchemy.orm import Session
 from ..config import api, state_dispenser, ALCHEMY_SESSION_KEY
 from ..model.generated import SentToken, User, Role
-from .limits import random_id
+from .random import random_id
 from .token import Token
 
 common_labeler = BotLabeler()

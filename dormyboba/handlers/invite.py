@@ -1,7 +1,9 @@
+from urllib.parse import urlencode
 from vkbottle import Keyboard, Text, BaseStateGroup
 from vkbottle.bot import Message, BotLabeler
-from ..config import api, state_dispenser
+from ..config import api, state_dispenser, DOMAIN
 from .common import KEYBOARD_START, KEYBOARD_EMPTY, CommonState
+from .token import Token
 
 invite_labeler = BotLabeler()
 
@@ -13,7 +15,9 @@ KEYBOARD_INVITE = (
     Keyboard()
     .add(Text("Администратор", payload={"command": "inviteAdmin"}))
     .row()
-    .add(Text("Пользователь", payload={"command": "inviteClient"}))
+    .add(Text("Член студсовета", payload={"command": "inviteCouncilMem"}))
+    .row()
+    .add(Text("Студент", payload={"command": "inviteStudent"}))
     .row()
     .add(Text("Назад", payload={"command": "start"}))
     .get_json()
@@ -23,13 +27,25 @@ KEYBOARD_INVITE = (
 async def invite(message: Message) -> None:
     await message.answer("Выберите роль нового пользователя", keyboard=KEYBOARD_INVITE)
 
+def create_invite_link(token: Token) -> str:
+    params = {"token": token.encode()}
+    return f"https://{DOMAIN}/invite/widget?" + urlencode(params)
+    
+
 @invite_labeler.message(payload={"command": "inviteAdmin"})
 async def invite_admin(message: Message) -> None:
-    await message.answer("https://www.youtube.com/watch?v=dQw4w9WgXcQ", keyboard=KEYBOARD_START)
+    invite_link = create_invite_link(Token("admin").encode())
+    await message.answer(invite_link, keyboard=KEYBOARD_START)
 
-@invite_labeler.message(payload={"command": "inviteClient"})
+@invite_labeler.message(payload={"command": "inviteCouncilMem"})
 async def invite_client(message: Message) -> None:
-    await message.answer("https://www.youtube.com/watch?v=dQw4w9WgXcQ", keyboard=KEYBOARD_START)
+    invite_link = create_invite_link(Token("council_member").encode())
+    await message.answer(invite_link, keyboard=KEYBOARD_START)
+
+@invite_labeler.message(payload={"command": "inviteStudent"})
+async def invite_client(message: Message) -> None:
+    invite_link = create_invite_link(Token("student").encode())
+    await message.answer(invite_link, keyboard=KEYBOARD_START)
 
 @invite_labeler.message(payload={"command": "register"})
 async def register(message: Message) -> None:

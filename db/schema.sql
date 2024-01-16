@@ -4,7 +4,7 @@ CREATE DATABASE dormyboba;
 
 CREATE TABLE "sent_token" (
     "sent_token_id" serial PRIMARY KEY,
-    "token" varchar(384),
+    "token" varchar(1024),
     "user_id" integer UNIQUE
 );
 

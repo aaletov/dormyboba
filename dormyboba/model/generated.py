@@ -70,7 +70,7 @@ class SentToken(Base):
     )
 
     sent_token_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    token: Mapped[Optional[str]] = mapped_column(String(384))
+    token: Mapped[Optional[str]] = mapped_column(String(1024))
     user_id: Mapped[Optional[int]] = mapped_column(Integer)
 
 
