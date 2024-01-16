@@ -32,14 +32,13 @@ puml-all: $(hld_svgs)
 .PHONY: docs
 docs: bpmn-all puml-all
 
-short_hash = $(shell hashdeep -r -l $(1) | sort | md5sum | grep -Eo '^[0-9a-z]{6}')
-time = $(shell date +%s | grep -Eo '[0-9]{6}$$')
+PG_USER := postgres
+PG_PASSWORD := 123456
+PG_HOST := postgresql
+PG_PORT := 5432
+PG_DB := dormyboba
+ALCH_URL := postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DB}
 
-init_hash=$(call short_hash,./test/init)
-pg_time=$(call time)
-.PHONY: pg-image
-pg-image:
-	docker build -f test/Dockerfile.pg \
-		--build-arg INIT=test/init \
-		-t pgtest:${init_hash}-${pg_time} .
-	docker tag pgtest:${init_hash}-${pg_time} pgtest:latest
+.PHONY: alchemy-models
+alchemy-models:
+	poetry run sqlacodegen ${ALCH_URL} --outfile dormyboba/model/generated.py

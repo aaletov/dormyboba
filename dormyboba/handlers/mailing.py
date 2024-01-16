@@ -1,6 +1,6 @@
 from vkbottle import Keyboard, Text, VKApps, BaseStateGroup
 from vkbottle.bot import Message, BotLabeler
-from config import api, state_dispenser
+from ..config import api, state_dispenser
 from .common import KEYBOARD_START, KEYBOARD_EMPTY
 
 mailing_labeler = BotLabeler()
