@@ -4,29 +4,29 @@ CREATE DATABASE dormyboba;
 
 CREATE TABLE "sent_token" (
     "sent_token_id" serial PRIMARY KEY,
-    "token" varchar(1024),
+    "token" varchar(1024) UNIQUE,
     "user_id" integer UNIQUE
 );
 
 CREATE TABLE "academic_type" (
-  "type_id" serial PRIMARY KEY,
-  "name" varchar(50)
+  "type_id" integer PRIMARY KEY,
+  "type_name" varchar(50)
 );
 
 CREATE TABLE "institute" (
-  "institute_id" serial PRIMARY KEY,
-  "name" varchar(50)
+  "institute_id" integer PRIMARY KEY,
+  "institute_name" varchar(50)
 );
 
-CREATE TABLE "role" (
+CREATE TABLE "dormyboba_role" (
   "role_id" serial PRIMARY KEY,
   "role_name" varchar(50) UNIQUE
 );
 
-CREATE TABLE "user" (
+CREATE TABLE "dormyboba_user" (
   "user_id" integer PRIMARY KEY,
   "peer_id" integer UNIQUE,
-  "role_id" integer REFERENCES "role" ("role_id"),
+  "role_id" integer REFERENCES "dormyboba_role" ("role_id"),
   "academic_type_id" integer REFERENCES "academic_type" ("type_id"),
   "institute_id" integer REFERENCES "institute" ("institute_id"),
   "year" integer,
@@ -52,7 +52,7 @@ CREATE TABLE "queue" (
 );
 
 CREATE TABLE "queue_to_user" (
-  "user_id" integer REFERENCES "user" ("user_id"),
+  "user_id" integer REFERENCES "dormyboba_user" ("user_id"),
   "queue_id" integer REFERENCES "queue" ("queue_id"),
   PRIMARY KEY ("user_id", "queue_id")
 );

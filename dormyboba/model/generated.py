@@ -15,10 +15,23 @@ class AcademicType(Base):
     )
 
     type_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[Optional[str]] = mapped_column(String(50))
+    type_name: Mapped[Optional[str]] = mapped_column(String(50))
 
+    dormyboba_user: Mapped[List['DormybobaUser']] = relationship('DormybobaUser', back_populates='academic_type')
     mailing: Mapped[List['Mailing']] = relationship('Mailing', back_populates='academic_type')
-    user: Mapped[List['User']] = relationship('User', back_populates='academic_type')
+
+
+class DormybobaRole(Base):
+    __tablename__ = 'dormyboba_role'
+    __table_args__ = (
+        PrimaryKeyConstraint('role_id', name='dormyboba_role_pkey'),
+        UniqueConstraint('role_name', name='dormyboba_role_role_name_key')
+    )
+
+    role_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    role_name: Mapped[Optional[str]] = mapped_column(String(50))
+
+    dormyboba_user: Mapped[List['DormybobaUser']] = relationship('DormybobaUser', back_populates='role')
 
 
 class Institute(Base):
@@ -28,10 +41,10 @@ class Institute(Base):
     )
 
     institute_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[Optional[str]] = mapped_column(String(50))
+    institute_name: Mapped[Optional[str]] = mapped_column(String(50))
 
+    dormyboba_user: Mapped[List['DormybobaUser']] = relationship('DormybobaUser', back_populates='institute')
     mailing: Mapped[List['Mailing']] = relationship('Mailing', back_populates='institute')
-    user: Mapped[List['User']] = relationship('User', back_populates='institute')
 
 
 class Queue(Base):
@@ -46,32 +59,44 @@ class Queue(Base):
     open: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
     close: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
 
-    user: Mapped[List['User']] = relationship('User', secondary='queue_to_user', back_populates='queue')
-
-
-class Role(Base):
-    __tablename__ = 'role'
-    __table_args__ = (
-        PrimaryKeyConstraint('role_id', name='role_pkey'),
-        UniqueConstraint('role_name', name='role_role_name_key')
-    )
-
-    role_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    role_name: Mapped[Optional[str]] = mapped_column(String(50))
-
-    user: Mapped[List['User']] = relationship('User', back_populates='role')
+    user: Mapped[List['DormybobaUser']] = relationship('DormybobaUser', secondary='queue_to_user', back_populates='queue')
 
 
 class SentToken(Base):
     __tablename__ = 'sent_token'
     __table_args__ = (
         PrimaryKeyConstraint('sent_token_id', name='sent_token_pkey'),
+        UniqueConstraint('token', name='sent_token_token_key'),
         UniqueConstraint('user_id', name='sent_token_user_id_key')
     )
 
     sent_token_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     token: Mapped[Optional[str]] = mapped_column(String(1024))
     user_id: Mapped[Optional[int]] = mapped_column(Integer)
+
+
+class DormybobaUser(Base):
+    __tablename__ = 'dormyboba_user'
+    __table_args__ = (
+        ForeignKeyConstraint(['academic_type_id'], ['academic_type.type_id'], name='dormyboba_user_academic_type_id_fkey'),
+        ForeignKeyConstraint(['institute_id'], ['institute.institute_id'], name='dormyboba_user_institute_id_fkey'),
+        ForeignKeyConstraint(['role_id'], ['dormyboba_role.role_id'], name='dormyboba_user_role_id_fkey'),
+        PrimaryKeyConstraint('user_id', name='dormyboba_user_pkey'),
+        UniqueConstraint('peer_id', name='dormyboba_user_peer_id_key')
+    )
+
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    peer_id: Mapped[Optional[int]] = mapped_column(Integer)
+    role_id: Mapped[Optional[int]] = mapped_column(Integer)
+    academic_type_id: Mapped[Optional[int]] = mapped_column(Integer)
+    institute_id: Mapped[Optional[int]] = mapped_column(Integer)
+    year: Mapped[Optional[int]] = mapped_column(Integer)
+    group: Mapped[Optional[str]] = mapped_column(String(5))
+
+    queue: Mapped[List['Queue']] = relationship('Queue', secondary='queue_to_user', back_populates='user')
+    academic_type: Mapped['AcademicType'] = relationship('AcademicType', back_populates='dormyboba_user')
+    institute: Mapped['Institute'] = relationship('Institute', back_populates='dormyboba_user')
+    role: Mapped['DormybobaRole'] = relationship('DormybobaRole', back_populates='dormyboba_user')
 
 
 class Mailing(Base):
@@ -94,35 +119,11 @@ class Mailing(Base):
     institute: Mapped['Institute'] = relationship('Institute', back_populates='mailing')
 
 
-class User(Base):
-    __tablename__ = 'user'
-    __table_args__ = (
-        ForeignKeyConstraint(['academic_type_id'], ['academic_type.type_id'], name='user_academic_type_id_fkey'),
-        ForeignKeyConstraint(['institute_id'], ['institute.institute_id'], name='user_institute_id_fkey'),
-        ForeignKeyConstraint(['role_id'], ['role.role_id'], name='user_role_id_fkey'),
-        PrimaryKeyConstraint('user_id', name='user_pkey'),
-        UniqueConstraint('peer_id', name='user_peer_id_key')
-    )
-
-    user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    peer_id: Mapped[Optional[int]] = mapped_column(Integer)
-    role_id: Mapped[Optional[int]] = mapped_column(Integer)
-    academic_type_id: Mapped[Optional[int]] = mapped_column(Integer)
-    institute_id: Mapped[Optional[int]] = mapped_column(Integer)
-    year: Mapped[Optional[int]] = mapped_column(Integer)
-    group: Mapped[Optional[str]] = mapped_column(String(5))
-
-    queue: Mapped[List['Queue']] = relationship('Queue', secondary='queue_to_user', back_populates='user')
-    academic_type: Mapped['AcademicType'] = relationship('AcademicType', back_populates='user')
-    institute: Mapped['Institute'] = relationship('Institute', back_populates='user')
-    role: Mapped['Role'] = relationship('Role', back_populates='user')
-
-
 t_queue_to_user = Table(
     'queue_to_user', Base.metadata,
     Column('user_id', Integer, primary_key=True, nullable=False),
     Column('queue_id', Integer, primary_key=True, nullable=False),
     ForeignKeyConstraint(['queue_id'], ['queue.queue_id'], name='queue_to_user_queue_id_fkey'),
-    ForeignKeyConstraint(['user_id'], ['user.user_id'], name='queue_to_user_user_id_fkey'),
+    ForeignKeyConstraint(['user_id'], ['dormyboba_user.user_id'], name='queue_to_user_user_id_fkey'),
     PrimaryKeyConstraint('user_id', 'queue_id', name='queue_to_user_pkey')
 )
