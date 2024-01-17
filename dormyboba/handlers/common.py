@@ -72,7 +72,7 @@ KEYBOARD_EMPTY = Keyboard().get_json()
 async def message_allow(event: MessageAllow) -> None:
     session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
     stmt = select(DormybobaUser).where(DormybobaUser.user_id == event.object.user_id)
-    is_registered = len(session.execute(stmt).first() != 0)
+    is_registered = session.execute(stmt).first() is not None
     if is_registered:
         return
     # ensure unique user_ids at db level

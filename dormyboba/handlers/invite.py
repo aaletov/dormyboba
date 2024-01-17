@@ -93,14 +93,24 @@ async def pending_name(message: Message) -> None:
 @invite_labeler.message(state=RegisterState.PENDING_GROUP)
 async def pending_name(message: Message) -> None:
     # 51 3 09 04 / 00 1 04
-    match = re.fullmatch(r'(\d{2})(\d{1})(\d{2})(\d{2})/(\d{2})(\d{1})(\d{2})', message.text)
+    match = re.fullmatch(r'(\d{2})(\d{1})(\d{2})(\d{2})/(\d{1})(\d{2})(\d{2})', message.text)
     if match is None:
         await state_dispenser.set(message.peer_id, RegisterState.PENDING_GROUP)
         await message.answer("Введите свою группу")
         return
     
     groups = match.groups()
-    update()
+    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
+    stmt = update(DormybobaUser).where(
+            DormybobaUser.user_id == message.peer_id,
+        ).values(
+            institute_id=groups[0],
+            academic_type_id=groups[1],
+            year=groups[4],
+            group="".join(groups[4:7]),
+        )
+    session.execute(stmt)
+    session.commit()
 
     await state_dispenser.delete(message.peer_id)
     await message.answer("Регистрация завершена", keyboard=KEYBOARD_START)
