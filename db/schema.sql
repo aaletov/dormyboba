@@ -1,3 +1,5 @@
+\c postgres;
+
 CREATE DATABASE dormyboba;
 
 \c dormyboba;
@@ -45,16 +47,19 @@ CREATE TABLE "mailing" (
 
 CREATE TABLE "queue" (
   "queue_id" serial PRIMARY KEY,
-  "conversation_id" integer,
-  "name" varchar(256),
+  "title" varchar(256),
+  "description" varchar(256),
   "open" timestamp,
-  "close" timestamp
+  "close" timestamp,
+  "is_opened" boolean NOT NULL DEFAULT FALSE,
+  "active_user_id" integer REFERENCES "dormyboba_user" ("user_id")
 );
 
 CREATE TABLE "queue_to_user" (
   "user_id" integer REFERENCES "dormyboba_user" ("user_id"),
   "queue_id" integer REFERENCES "queue" ("queue_id"),
-  PRIMARY KEY ("user_id", "queue_id")
+  PRIMARY KEY ("user_id", "queue_id"),
+  "joined" timestamp NOT NULL
 );
 
 

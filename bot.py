@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from dormyboba.config import labeler, DB_URL, ALCHEMY_SESSION_KEY, api, state_dispenser
 from dormyboba.handlers import common_labeler, invite_labeler, mailing_labeler, queue_labeler, defect_labeler
-from dormyboba.daemon_tasks import mailing_task
+from dormyboba.daemon_tasks import mailing_task, queue_task
 
 labeler.load(common_labeler)
 labeler.load(invite_labeler)
@@ -30,6 +30,10 @@ async def runtime_error_handler(e: RuntimeError):
 @bot.loop_wrapper.interval(seconds=15)
 async def cool_printer():
     await mailing_task()
+
+@bot.loop_wrapper.interval(seconds=15)
+async def cool_queuer():
+    await queue_task()
 
 if __name__ == "__main__":
     try:
