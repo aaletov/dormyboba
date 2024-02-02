@@ -1,1 +1,3 @@
-DROP DATABASE dormyboba;
+\c postgres;
+
+DROP DATABASE IF EXISTS dormyboba;

@@ -1,3 +1,5 @@
+\c dormyboba;
+
 INSERT INTO mailing("theme", "mailing_text", "at", "academic_type_id", "institute_id", "year") VALUES
     ('Cool theme', 'Cool text', '2022-10-10 11:30:30', 3, 51, 0);
 

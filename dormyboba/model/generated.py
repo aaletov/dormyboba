@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import Column, DateTime, ForeignKeyConstraint, Integer, PrimaryKeyConstraint, String, Table, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKeyConstraint, Integer, PrimaryKeyConstraint, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 import datetime
 
@@ -47,21 +47,6 @@ class Institute(Base):
     mailing: Mapped[List['Mailing']] = relationship('Mailing', back_populates='institute')
 
 
-class Queue(Base):
-    __tablename__ = 'queue'
-    __table_args__ = (
-        PrimaryKeyConstraint('queue_id', name='queue_pkey'),
-    )
-
-    queue_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    conversation_id: Mapped[Optional[int]] = mapped_column(Integer)
-    name: Mapped[Optional[str]] = mapped_column(String(256))
-    open: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
-    close: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
-
-    user: Mapped[List['DormybobaUser']] = relationship('DormybobaUser', secondary='queue_to_user', back_populates='queue')
-
-
 class SentToken(Base):
     __tablename__ = 'sent_token'
     __table_args__ = (
@@ -93,10 +78,11 @@ class DormybobaUser(Base):
     year: Mapped[Optional[int]] = mapped_column(Integer)
     group: Mapped[Optional[str]] = mapped_column(String(5))
 
-    queue: Mapped[List['Queue']] = relationship('Queue', secondary='queue_to_user', back_populates='user')
     academic_type: Mapped['AcademicType'] = relationship('AcademicType', back_populates='dormyboba_user')
     institute: Mapped['Institute'] = relationship('Institute', back_populates='dormyboba_user')
     role: Mapped['DormybobaRole'] = relationship('DormybobaRole', back_populates='dormyboba_user')
+    queue: Mapped[List['Queue']] = relationship('Queue', back_populates='active_user')
+    queue_to_user: Mapped[List['QueueToUser']] = relationship('QueueToUser', back_populates='user')
 
 
 class Mailing(Base):
@@ -119,11 +105,36 @@ class Mailing(Base):
     institute: Mapped['Institute'] = relationship('Institute', back_populates='mailing')
 
 
-t_queue_to_user = Table(
-    'queue_to_user', Base.metadata,
-    Column('user_id', Integer, primary_key=True, nullable=False),
-    Column('queue_id', Integer, primary_key=True, nullable=False),
-    ForeignKeyConstraint(['queue_id'], ['queue.queue_id'], name='queue_to_user_queue_id_fkey'),
-    ForeignKeyConstraint(['user_id'], ['dormyboba_user.user_id'], name='queue_to_user_user_id_fkey'),
-    PrimaryKeyConstraint('user_id', 'queue_id', name='queue_to_user_pkey')
-)
+class Queue(Base):
+    __tablename__ = 'queue'
+    __table_args__ = (
+        ForeignKeyConstraint(['active_user_id'], ['dormyboba_user.user_id'], name='queue_active_user_id_fkey'),
+        PrimaryKeyConstraint('queue_id', name='queue_pkey')
+    )
+
+    queue_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[Optional[str]] = mapped_column(String(256))
+    description: Mapped[Optional[str]] = mapped_column(String(256))
+    open: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
+    close: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
+    is_opened: Mapped[Optional[bool]] = mapped_column(Boolean)
+    active_user_id: Mapped[Optional[int]] = mapped_column(Integer)
+
+    active_user: Mapped['DormybobaUser'] = relationship('DormybobaUser', back_populates='queue')
+    queue_to_user: Mapped[List['QueueToUser']] = relationship('QueueToUser', back_populates='queue')
+
+
+class QueueToUser(Base):
+    __tablename__ = 'queue_to_user'
+    __table_args__ = (
+        ForeignKeyConstraint(['queue_id'], ['queue.queue_id'], name='queue_to_user_queue_id_fkey'),
+        ForeignKeyConstraint(['user_id'], ['dormyboba_user.user_id'], name='queue_to_user_user_id_fkey'),
+        PrimaryKeyConstraint('user_id', 'queue_id', name='queue_to_user_pkey')
+    )
+
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    queue_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    joined: Mapped[datetime.datetime] = mapped_column(DateTime)
+
+    queue: Mapped['Queue'] = relationship('Queue', back_populates='queue_to_user')
+    user: Mapped['DormybobaUser'] = relationship('DormybobaUser', back_populates='queue_to_user')
