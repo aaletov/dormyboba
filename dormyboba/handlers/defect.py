@@ -1,14 +1,19 @@
 from typing import List
+import asyncio
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
-from ..config import api, state_dispenser, defect_sheet
-from .common import KEYBOARD_START, KEYBOARD_EMPTY, random_id
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from gspread import Cell
+from ..config import api, state_dispenser, defect_sheet, ALCHEMY_SESSION_KEY
+from .common import KEYBOARD_START, KEYBOARD_EMPTY, random_id
+from ..model.generated import DormybobaUser, DormybobaRole
 
 defect_labeler = BotLabeler()
 
 class DefectState(BaseStateGroup):
     PENDING_DESCRIPTION = "pending_description"
+    DEFECT_NOT_ASSIGNED = "defect_not_assigned"
 
 KEYBOARD_DEFECT = (
     Keyboard()
@@ -82,9 +87,6 @@ async def defect_done(message: Message) -> None:
         await message.answer("Не задано время открытия очереди!", keyboard=KEYBOARD_DEFECT)
         return
 
-    users_info = await api.users.get(message.from_id)
-    user_name = users_info[0].first_name + " " + users_info[0].last_name
-
     worksheet = defect_sheet.get_worksheet(0)
     column = worksheet.col_values(1)
     i = len(column) + 1
@@ -94,7 +96,7 @@ async def defect_done(message: Message) -> None:
     defect_id = "DD" + str(random_id())
     values = (
         defect_id,
-        user_name,
+        message.peer_id,
         defect["type"],
         defect["description"],
         "Добавлено",
@@ -103,6 +105,85 @@ async def defect_done(message: Message) -> None:
         cell.value = value
 
     worksheet.update_cells(irange)
-    await message.answer(f"Проблема успешно создана. Номер проблемы - {defect_id}", keyboard=KEYBOARD_START)
 
+    await asyncio.gather(
+        message.answer(f"Проблема успешно создана. Номер проблемы - {defect_id}",
+                       keyboard=KEYBOARD_START),
+        defect_assign(defect_id),
+    )
+
+def build_accept_keyboard(defect_id: int) -> str:
+    return (
+        Keyboard(inline=True)
+        .add(Text("Принято", payload={
+            "command": "defect_accept",
+            "defect_id": defect_id,
+        }))
+        .get_json()
+    )
+    
+async def defect_assign(defect_id: str) -> None:
+    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
+    stmt = (
+        select(DormybobaUser)
+        .join(DormybobaRole, DormybobaUser.role_id == DormybobaRole.role_id)
+        .where(DormybobaRole.role_name == "admin")
+    )
+    admin_user: DormybobaUser = session.execute(stmt).first()[0]
+
+    await api.messages.send(
+        user_id=admin_user.user_id,
+        message=f"Новая проблема {defect_id}",
+        random_id=random_id(),
+        keyboard=build_accept_keyboard(defect_id)
+    )
+
+def build_resolved_keyboard(defect_id: int) -> str:
+    return (
+        Keyboard(inline=True)
+        .add(Text("Решено", payload={
+            "command": "defect_resolved",
+            "defect_id": defect_id,
+        }))
+        .get_json()
+    )
+
+async def notify_effective_user(effective_user_id: int, defect_id: str, status: str) -> None:
+    await api.messages.send(
+        user_id=effective_user_id,
+        message=f"Статус проблемы {defect_id} изменен на {status}",
+        random_id=random_id(),
+    )
+
+@defect_labeler.message(payload_contains={"command": "defect_accept"})
+async def defect_accept(message: Message) -> None:
+    payload = message.get_payload_json()
+
+    worksheet = defect_sheet.get_worksheet(0)
+    column = worksheet.col_values(1)
+    i = column.index(payload["defect_id"]) + 1
+    effective_user_id: int = worksheet.cell(row=i, col=2).value
+    worksheet.update_cell(row=i, col=5, value="Принято")
+
+    await asyncio.gather(
+        message.answer(message="Статус проблемы изменен на \"Принято\"",
+                       keyboard=build_resolved_keyboard(payload["defect_id"])),
+        notify_effective_user(effective_user_id, payload["defect_id"], "Принято")
+    )
+
+
+@defect_labeler.message(payload_contains={"command": "defect_resolved"})
+async def defect_resolved(message: Message) -> None:
+    payload = message.get_payload_json()
+
+    worksheet = defect_sheet.get_worksheet(0)
+    column = worksheet.col_values(1)
+    i = column.index(payload["defect_id"]) + 1
+    effective_user_id: int = worksheet.cell(row=i, col=2).value
+    worksheet.update_cell(row=i, col=5, value="Решено")
+
+    await asyncio.gather(
+        message.answer(message="Статус проблемы изменен на \"Решено\""),
+        notify_effective_user(effective_user_id, payload["defect_id"], "Решено")
+    )
 
