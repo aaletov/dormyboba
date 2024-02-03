@@ -2,6 +2,7 @@ import yaml
 from pathlib import Path
 from vkbottle import API, BuiltinStateDispenser
 from vkbottle.bot import BotLabeler
+import gspread
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,3 +28,9 @@ labeler = BotLabeler()
 state_dispenser = BuiltinStateDispenser()
 
 ALCHEMY_SESSION_KEY = "ALCHEMY_SESSION"
+
+gc = gspread.service_account(filename=BASE_DIR / "service_account.json")
+gc_config = config["gc"]
+DEFECT_SHEET_ID = gc_config["defect_sheet_id"]
+
+defect_sheet = gc.open_by_key(DEFECT_SHEET_ID)
