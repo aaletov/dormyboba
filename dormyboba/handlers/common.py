@@ -1,24 +1,24 @@
-from typing import cast
+from typing import cast, Optional
 from vkbottle import Keyboard, Text, GroupEventType, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
-from vkbottle_types.events import MessageAllow
-from sqlalchemy import select, insert
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-from ..config import api, state_dispenser, ALCHEMY_SESSION_KEY
-from ..model.generated import SentToken, DormybobaUser, DormybobaRole
-from .random import random_id
-from .token import Token
+from ..config import api, ALCHEMY_SESSION_KEY
+from ..model.generated import DormybobaUser, DormybobaRole
 
 common_labeler = BotLabeler()
 
-class CommonState(BaseStateGroup):
-    PENDING_REGISTER = "pending_register"
-
-def build_keyboard_start(user_role: str) -> str:
+def build_keyboard_start(user_role: Optional[str]) -> str:
     keyboard = Keyboard()
     row_complete = False
-    if user_role in ("admin", "council_member", "student"):
+    if user_role in (None, "admin", "council_member", "student"):
         keyboard = keyboard.add(Text("Информация о боте", payload={"command": "help"}))
+        row_complete = True
+    if user_role is None:
+        if row_complete:
+            keyboard = keyboard.row()
+            row_complete = False
+        keyboard = keyboard.add(Text("Зарегистрироваться", payload={"command": "register"}))
         row_complete = True
     if user_role in ("admin", "council_member"):
         if row_complete:
@@ -68,38 +68,6 @@ KEYBOARD_REGISTER = (
 
 KEYBOARD_EMPTY = Keyboard().get_json()
 
-@common_labeler.raw_event(GroupEventType.MESSAGE_ALLOW, dataclass=MessageAllow)
-async def message_allow(event: MessageAllow) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
-    stmt = select(DormybobaUser).where(DormybobaUser.user_id == event.object.user_id)
-    is_registered = session.execute(stmt).first() is not None
-    if is_registered:
-        return
-    # ensure unique user_ids at db level
-    stmt = select(SentToken).where(SentToken.user_id == event.object.user_id)
-    sent_token = session.execute(stmt).first()[0]
-    sent_token = cast(str, sent_token)
-    token_obj = None
-    try:
-        token_obj = Token.from_str(sent_token)
-    except Exception as exc:
-        print(exc)
-
-    token_obj = cast(Token, token_obj)
-    
-    # multi-table insert, must use role table as well
-    stmt = insert(DormybobaUser).from_select(
-        ['user_id', 'role_id'],
-        select(event.object.user_id, DormybobaRole.role_id).where(DormybobaRole.role_name == "student")
-    )
-    session.execute(stmt)
-    session.commit()
-
-    await api.messages.send(message="Добро пожаловать!",
-                                user_ids=[event.object.user_id],
-                                random_id=random_id(),
-                                keyboard=KEYBOARD_REGISTER)
-
 @common_labeler.message(command="help")
 @common_labeler.message(command="start")
 @common_labeler.message(payload={"command": "help"})
@@ -110,6 +78,11 @@ async def help(message: Message) -> None:
     stmt = select(DormybobaRole.role_name).join(
         DormybobaUser, DormybobaRole.role_id == DormybobaUser.role_id
     ).where(DormybobaUser.user_id == message.peer_id)
-    role_name: str = session.execute(stmt).first()[0]
+    res = session.execute(stmt).first()
+
+    role_name = None
+    if res is not None:
+        role_name: str = res[0]
+
     await message.answer("Привет, {}".format(users_info[0].first_name),
                          keyboard=build_keyboard_start(role_name))

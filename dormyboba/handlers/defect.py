@@ -6,7 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from gspread import Cell
 from ..config import api, state_dispenser, defect_sheet, ALCHEMY_SESSION_KEY
-from .common import KEYBOARD_START, KEYBOARD_EMPTY, random_id
+from .common import KEYBOARD_START, KEYBOARD_EMPTY
+from .random import random_id
 from ..model.generated import DormybobaUser, DormybobaRole
 
 defect_labeler = BotLabeler()

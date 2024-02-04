@@ -5,7 +5,8 @@ from vkbottle.bot import Message, BotLabeler
 from sqlalchemy.orm import Session
 from sqlalchemy import select, insert, delete, update, and_
 from ..config import api, state_dispenser, ALCHEMY_SESSION_KEY
-from .common import KEYBOARD_START, KEYBOARD_EMPTY, random_id
+from .common import KEYBOARD_START, KEYBOARD_EMPTY
+from .random import random_id
 from ..model.generated import Queue, QueueToUser
 
 queue_labeler = BotLabeler()
