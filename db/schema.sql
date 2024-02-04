@@ -4,12 +4,6 @@ CREATE DATABASE dormyboba;
 
 \c dormyboba;
 
-CREATE TABLE "sent_token" (
-    "sent_token_id" serial PRIMARY KEY,
-    "token" varchar(1024) UNIQUE,
-    "user_id" integer UNIQUE
-);
-
 CREATE TABLE "academic_type" (
   "type_id" integer PRIMARY KEY,
   "type_name" varchar(50)
@@ -23,6 +17,11 @@ CREATE TABLE "institute" (
 CREATE TABLE "dormyboba_role" (
   "role_id" serial PRIMARY KEY,
   "role_name" varchar(50) UNIQUE
+);
+
+CREATE TABLE "verification_code" (
+  "code" integer PRIMARY KEY,
+  "role_id" integer REFERENCES "dormyboba_role" ("role_id")
 );
 
 CREATE TABLE "dormyboba_user" (

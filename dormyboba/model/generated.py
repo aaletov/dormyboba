@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKeyConstraint, Integer, PrimaryKeyConstraint, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKeyConstraint, Integer, PrimaryKeyConstraint, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 import datetime
 
@@ -32,6 +32,7 @@ class DormybobaRole(Base):
     role_name: Mapped[Optional[str]] = mapped_column(String(50))
 
     dormyboba_user: Mapped[List['DormybobaUser']] = relationship('DormybobaUser', back_populates='role')
+    verification_code: Mapped[List['VerificationCode']] = relationship('VerificationCode', back_populates='role')
 
 
 class Institute(Base):
@@ -45,19 +46,6 @@ class Institute(Base):
 
     dormyboba_user: Mapped[List['DormybobaUser']] = relationship('DormybobaUser', back_populates='institute')
     mailing: Mapped[List['Mailing']] = relationship('Mailing', back_populates='institute')
-
-
-class SentToken(Base):
-    __tablename__ = 'sent_token'
-    __table_args__ = (
-        PrimaryKeyConstraint('sent_token_id', name='sent_token_pkey'),
-        UniqueConstraint('token', name='sent_token_token_key'),
-        UniqueConstraint('user_id', name='sent_token_user_id_key')
-    )
-
-    sent_token_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    token: Mapped[Optional[str]] = mapped_column(String(1024))
-    user_id: Mapped[Optional[int]] = mapped_column(Integer)
 
 
 class DormybobaUser(Base):
@@ -105,6 +93,19 @@ class Mailing(Base):
     institute: Mapped['Institute'] = relationship('Institute', back_populates='mailing')
 
 
+class VerificationCode(Base):
+    __tablename__ = 'verification_code'
+    __table_args__ = (
+        ForeignKeyConstraint(['role_id'], ['dormyboba_role.role_id'], name='verification_code_role_id_fkey'),
+        PrimaryKeyConstraint('code', name='verification_code_pkey')
+    )
+
+    code: Mapped[int] = mapped_column(Integer, primary_key=True)
+    role_id: Mapped[Optional[int]] = mapped_column(Integer)
+
+    role: Mapped['DormybobaRole'] = relationship('DormybobaRole', back_populates='verification_code')
+
+
 class Queue(Base):
     __tablename__ = 'queue'
     __table_args__ = (
@@ -113,11 +114,11 @@ class Queue(Base):
     )
 
     queue_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    is_opened: Mapped[bool] = mapped_column(Boolean, server_default=text('false'))
     title: Mapped[Optional[str]] = mapped_column(String(256))
     description: Mapped[Optional[str]] = mapped_column(String(256))
     open: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
     close: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
-    is_opened: Mapped[Optional[bool]] = mapped_column(Boolean)
     active_user_id: Mapped[Optional[int]] = mapped_column(Integer)
 
     active_user: Mapped['DormybobaUser'] = relationship('DormybobaUser', back_populates='queue')
