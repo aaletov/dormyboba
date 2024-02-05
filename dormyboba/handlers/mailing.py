@@ -2,11 +2,10 @@ from typing import cast
 from datetime import datetime
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
-from sqlalchemy import select, insert
-from sqlalchemy.orm import Session
-from ..config import api, state_dispenser, ALCHEMY_SESSION_KEY
+import dormyboba_api.v1api_pb2 as apiv1
+import dormyboba_api.v1api_pb2_grpc as apiv1grpc
+from ..config import api, state_dispenser, STUB_KEY
 from .common import KEYBOARD_START, KEYBOARD_EMPTY
-from ..model.generated import Mailing, Institute, AcademicType
 
 mailing_labeler = BotLabeler()
 
@@ -149,9 +148,9 @@ async def mailing_filter_back(message: Message) -> None:
 
 @mailing_labeler.message(payload={"command": "mailing_filter_institute"})
 async def mailing_filter_institute(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
-    stmt = select(Institute.institute_name)
-    institute_names = session.execute(stmt).all()
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    res: apiv1.GetAllInstitutesResponse = stub.GetAllInstitutes()
+    institute_names = [i.institute_name for i in res.institutes]
     keyboard = Keyboard()
     for i, row in enumerate(institute_names):
         name = row[0]
@@ -163,18 +162,22 @@ async def mailing_filter_institute(message: Message) -> None:
 
 @mailing_labeler.message(payload={"command": "mailing_filter_institute_got"})
 async def mailing_filter_institute_got(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
-    stmt = select(Institute.institute_id).where(Institute.institute_name == message.text)
-    insitute_id = session.execute(stmt).first()[0]
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    res: apiv1.GetInstituteByNameResponse = stub.GetInstituteByName(
+        apiv1.GetInstituteByNameRequest(
+            institute_name=message.text,
+        ),
+    )
+
     mailing: dict = CtxStorage().get(message.peer_id)
-    mailing["institute_id"] = insitute_id
+    mailing["institute_id"] = res.institute.institute_id
     await message.answer("Институт сохранён", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_filter_academic_type"})
 async def mailing_filter_academic_type(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
-    stmt = select(AcademicType.type_name)
-    type_names = session.execute(stmt).all()
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    res: apiv1.GetAllAcademicTypesResponse = stub.GetAllAcademicTypes()
+    type_names = [t.type_name for t in res.academic_types]
     keyboard = Keyboard()
     for i, row in enumerate(type_names):
         name = row[0]
@@ -186,11 +189,14 @@ async def mailing_filter_academic_type(message: Message) -> None:
 
 @mailing_labeler.message(payload={"command": "mailing_filter_academic_type_got"})
 async def mailing_filter_academic_type_got(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
-    stmt = select(AcademicType.type_id).where(AcademicType.type_name == message.text)
-    type_id = session.execute(stmt).first()[0]
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    res: apiv1.GetAcademicTypeByNameResponse = stub.GetAcademicTypeByName(
+        apiv1.GetAcademicTypeByNameRequest(
+            type_name=message.text,
+        ),
+    )
     mailing: dict = CtxStorage().get(message.peer_id)
-    mailing["academic_type_id"] = type_id
+    mailing["academic_type_id"] = res.academic_type.type_id
     await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
 KEYBOARD_COURSE = (
@@ -224,16 +230,23 @@ async def mailing_filter_course_got(message: Message) -> None:
         await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_done"})
-async def mailing_time(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
+async def mailing_time(message: Message) -> None:    
     mailing: dict = CtxStorage().get(message.peer_id)
     
     if not ("mailing_text" in mailing):
         await message.answer("Не задан текст рассылки!", keyboard=KEYBOARD_MAILING)
         return
 
-    stmt = insert(Mailing).values(mailing)
-    session.execute(stmt)
-    session.commit()
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    stub.CreateMailing(
+        apiv1.CreateMailingRequest(
+            theme=mailing["theme"],
+            mailing_text=mailing["mailing_text"],
+            at=mailing["at"],
+            institute_id=mailing["institute_id"],
+            academic_type_id=mailing["academic_type_id"],
+            year=mailing["year"],
+        ),
+    )
 
     await message.answer("Рассылка успешно создана!", keyboard=KEYBOARD_START)

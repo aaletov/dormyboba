@@ -3,12 +3,10 @@ import re
 import random
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
-from sqlalchemy.orm import Session
-from sqlalchemy import select, update, insert
-from ..config import api, state_dispenser, DOMAIN, ALCHEMY_SESSION_KEY
+import dormyboba_api.v1api_pb2 as apiv1
+import dormyboba_api.v1api_pb2_grpc as apiv1grpc
+from ..config import api, state_dispenser, STUB_KEY
 from .common import KEYBOARD_START, KEYBOARD_EMPTY
-from .token import Token
-from ..model.generated import DormybobaUser, DormybobaRole, VerificationCode
 
 invite_labeler = BotLabeler()
 
@@ -45,27 +43,23 @@ def build_keyboard_invite(user_role: str) -> str:
 
 @invite_labeler.message(payload={"command": "invite"})
 async def invite(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
-    stmt = select(DormybobaRole.role_name).join(
-        DormybobaUser, DormybobaRole.role_id == DormybobaUser.role_id
-    ).where(DormybobaUser.user_id == message.peer_id)
-    role_name: str = session.execute(stmt).first()[0]
-
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    res: apiv1.GetUserByIdResponse = stub.GetUserById(
+        apiv1.GetUserByIdRequest(
+            user_id=message.peer_id,
+        ),
+    )
     await message.answer("Выберите роль нового пользователя",
-                         keyboard=build_keyboard_invite(role_name))
+                         keyboard=build_keyboard_invite(res.user.role.role_name))
 
 def generate_code(role_name: str) -> int:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
-    code = random.randint(1000, 9999)
-    stmt = select(DormybobaRole.role_id).where(DormybobaRole.role_name == role_name)
-    role_id: int = session.execute(stmt).first()[0]
-    stmt = insert(VerificationCode).values(
-        code=code,
-        role_id=role_id,
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    res: apiv1.GenerateVerificationCodeResponse = stub.GenerateVerificationCode(
+        apiv1.GenerateVerificationCodeRequest(
+            role_name=role_name,
+        ),
     )
-    session.execute(stmt)
-    session.commit()
-    return code
+    return res.verification_code
 
 @invite_labeler.message(payload={"command": "inviteAdmin"})
 async def invite_admin(message: Message) -> None:
@@ -91,18 +85,25 @@ async def register(message: Message) -> None:
 @invite_labeler.message(state=RegisterState.PENDING_CODE)
 async def pending_code(message: Message) -> None:
     try:
-        session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
+        stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+
         match = re.fullmatch(r'\d{4}', message.text)
         if match is None:
             raise ValueError("Некорректный проверочный код")
         code = match.group()
-        stmt = select(VerificationCode).where(VerificationCode.code == code)
-        res = session.execute(stmt).first()
-        if res is None:
+
+        res: apiv1.GetRoleByVerificationCodeResponse = stub.GetRoleByVerificationCode(
+            apiv1.GetRoleByVerificationCodeRequest(
+                code=code,
+            ),
+        )
+        
+        if res.role is None:
             raise ValueError("Некорректный проверочный код")
-        code: VerificationCode = res[0]
+
         user: dict = CtxStorage().get(message.peer_id)
-        user["role_id"] = code.role_id
+        user["role_id"] = res.role.role_id
+        user["code"] = code
     except:
         await state_dispenser.set(message.peer_id, RegisterState.PENDING_GROUP)
         await message.answer("Введите проверочный код повторно")        
@@ -137,17 +138,18 @@ async def pending_group(message: Message) -> None:
     groups = match.groups()
     user: dict = CtxStorage().get(message.peer_id)
 
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
-    stmt = insert(DormybobaUser).values(
-        user_id=message.peer_id,
-        institute_id=groups[0],
-        role_id=user["role_id"],
-        academic_type_id=groups[1],
-        year=groups[4],
-        group="".join(groups[4:7]),
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    stub.CreateUser(
+        apiv1.CreateUserRequest(
+            user_id=message.peer_id,
+            institute_id=groups[0],
+            role_id=user["role_id"],
+            academic_type_id=groups[1],
+            year=groups[4],
+            group="".join(groups[4:7]),
+            verification_code=user["code"],
+        ),
     )
-    session.execute(stmt)
-    session.commit()
 
     await state_dispenser.delete(message.peer_id)
     await message.answer("Регистрация завершена", keyboard=KEYBOARD_START)

@@ -2,12 +2,11 @@ from typing import Callable, cast
 from datetime import datetime
 from vkbottle import Keyboard, Text, VKApps, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
-from sqlalchemy.orm import Session
-from sqlalchemy import select, insert, delete, update, and_
-from ..config import api, state_dispenser, ALCHEMY_SESSION_KEY
+import dormyboba_api.v1api_pb2 as apiv1
+import dormyboba_api.v1api_pb2_grpc as apiv1grpc
+from ..config import api, state_dispenser, STUB_KEY
 from .common import KEYBOARD_START, KEYBOARD_EMPTY
 from .random import random_id
-from ..model.generated import Queue, QueueToUser
 
 queue_labeler = BotLabeler()
 
@@ -114,7 +113,7 @@ async def pending_close(message: Message) -> None:
 
 @queue_labeler.message(payload={"command": "queue_done"})
 async def queue_done(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     queue: dict = CtxStorage().get(message.peer_id)
 
     if not ("title" in queue):
@@ -125,9 +124,14 @@ async def queue_done(message: Message) -> None:
         await message.answer("Не задано время открытия очереди!", keyboard=KEYBOARD_QUEUE)
         return
 
-    stmt = insert(Queue).values(queue)
-    session.execute(stmt)
-    session.commit()
+    stub.CreateQueue(
+        apiv1.CreateQueueRequest(
+            title=queue["title"],
+            description=queue["description"],
+            open=queue["open"],
+            close=queue["close"],
+        )
+    )
 
     await message.answer("Очередь успешно создана!", keyboard=KEYBOARD_START)
 
@@ -152,85 +156,53 @@ def build_leave_keyboard(queue_id: int) -> Keyboard:
 
 @queue_labeler.message(payload_contains={"command": "queue_join"})
 async def queue_join(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     queue_id: str = message.get_payload_json()["queue_id"]
+    res: apiv1.AddPersonToQueueResponse = stub.AddPersonToQueue(
+        apiv1.AddPersonToQueueRequest(
+            queue_id=queue_id,
+            user_id=message.peer_id,
+        ),
+    )
 
-    stmt = select(Queue).where(Queue.queue_id == queue_id)
-    queue: Queue = session.execute(stmt).first()[0]
-
-    if queue.active_user == None:
-        stmt = update(Queue).where(Queue.queue_id == queue_id).values(
-            active_user_id=message.peer_id
-        )
-        session.execute(stmt)
-        session.commit()
+    if res.is_active:
         await message.answer("Сейчас ваша очередь",
                              keyboard=build_complete_keyboard(queue_id))
     else:
-        # just throw if user already joined queue
-        stmt = insert(QueueToUser).values(user_id=message.peer_id, queue_id=queue_id,
-                                        joined=datetime.now())
-        session.execute(stmt)
-        session.commit()
-
         await message.answer("Вы успешно добавлены в очередь!",
                             keyboard=build_leave_keyboard(queue_id))
     
 @queue_labeler.message(payload_contains={"command": "queue_leave"})
 async def queue_leave(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     queue_id: str = message.payload["queue_id"]
-
-    # just throw if user already left queue
-    stmt = delete(QueueToUser).where(
-        and_(
-            QueueToUser.user_id == message.peer_id,
-            QueueToUser.queue_id == queue_id,
-        )
+    stub.RemovePersonFromQueue(
+        apiv1.RemovePersonFromQueueRequest(
+            queue_id=queue_id,
+            user_id=message.peer_id,
+        ),
     )
-    session.execute(stmt)
-    session.commit()
 
     await message.answer("Вы успешно вышли из очереди!")
 
 @queue_labeler.message(payload_contains={"command": "queue_complete"})
 async def queue_complete(message: Message) -> None:
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     queue_id: str = message.get_payload_json()["queue_id"]
 
-    # just throw if user already left queue
-    stmt = delete(QueueToUser).where(
-        and_(
-            QueueToUser.user_id == message.peer_id,
-            QueueToUser.queue_id == queue_id,
-        )
+    res: apiv1.PersonCompleteQueueResponse = stub.PersonCompleteQueue(
+        apiv1.PersonCompleteQueueRequest(
+            queue_id=queue_id,
+            user_id=message.peer_id,
+        ),
     )
-    session.execute(stmt)
-    await message.answer("Очередь передана следующему человеку")
 
-    stmt = select(Queue).where(Queue.queue_id == queue_id)
-    queue: Queue = session.execute(stmt).first()[0]
-
-    key: Callable[[QueueToUser], datetime.datetime] = lambda qtu: qtu.joined
-    sorted_qtu = sorted(queue.queue_to_user, key=key)
-
-    if len(sorted_qtu) == 0:
-        stmt = update(Queue).where(Queue.queue_id == queue_id).values(
-            active_user_id=None
-        )
-        session.execute(stmt)
-        session.commit()
-    else:
-        stmt = update(Queue).where(Queue.queue_id == queue_id).values(
-            active_user_id=sorted_qtu[0].user_id
-        )
-        session.execute(stmt)
-        session.commit()
-
+    if not res.is_queue_empty:
         await api.messages.send(
-            user_id=sorted_qtu[0].user_id,
+            user_id=res.active_user_id,
             message="Теперь ваша очередь!",
             random_id=random_id(),
             keyboard=build_complete_keyboard(queue_id),
         )
 
+    await message.answer("Очередь передана следующему человеку")

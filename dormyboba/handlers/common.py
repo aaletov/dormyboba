@@ -1,10 +1,10 @@
-from typing import cast, Optional
-from vkbottle import Keyboard, Text, GroupEventType, BaseStateGroup, CtxStorage
+from typing import Optional
+from vkbottle import Keyboard, Text, CtxStorage
 from vkbottle.bot import Message, BotLabeler
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from ..config import api, ALCHEMY_SESSION_KEY
-from ..model.generated import DormybobaUser, DormybobaRole
+import grpc
+import dormyboba_api.v1api_pb2 as apiv1
+import dormyboba_api.v1api_pb2_grpc as apiv1grpc
+from ..config import api, STUB_KEY
 
 common_labeler = BotLabeler()
 
@@ -73,16 +73,13 @@ KEYBOARD_EMPTY = Keyboard().get_json()
 @common_labeler.message(payload={"command": "help"})
 @common_labeler.message(payload={"command": "start"})
 async def help(message: Message) -> None:
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    res: apiv1.GetUserByIdResponse = stub.GetUserById(
+        apiv1.GetUserByIdRequest(
+            user_id=message.peer_id,
+        ),
+    )
+    role_name = None if res.user is None else res.user.role.role_name
     users_info = await api.users.get(message.from_id)
-    session: Session = CtxStorage().get(ALCHEMY_SESSION_KEY)
-    stmt = select(DormybobaRole.role_name).join(
-        DormybobaUser, DormybobaRole.role_id == DormybobaUser.role_id
-    ).where(DormybobaUser.user_id == message.peer_id)
-    res = session.execute(stmt).first()
-
-    role_name = None
-    if res is not None:
-        role_name: str = res[0]
-
     await message.answer("Привет, {}".format(users_info[0].first_name),
                          keyboard=build_keyboard_start(role_name))

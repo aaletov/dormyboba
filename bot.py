@@ -1,10 +1,10 @@
-import threading
 from vkbottle import Bot, CtxStorage
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-from dormyboba.config import labeler, DB_URL, ALCHEMY_SESSION_KEY, api, state_dispenser
+import grpc
+from dormyboba.config import labeler, api, state_dispenser, STUB_KEY
 from dormyboba.handlers import common_labeler, invite_labeler, mailing_labeler, queue_labeler, defect_labeler
 from dormyboba.daemon_tasks import mailing_task, queue_task
+import dormyboba_api.v1api_pb2 as apiv1
+import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 
 labeler.load(common_labeler)
 labeler.load(invite_labeler)
@@ -18,25 +18,25 @@ bot = Bot(
     state_dispenser=state_dispenser,
 )
 
-engine = create_engine(DB_URL)
-session = Session(engine)
-ctx_storage = CtxStorage()
-ctx_storage.set(ALCHEMY_SESSION_KEY, session)
+channel = grpc.insecure_channel('localhost:50051')
+stub = apiv1grpc.DormybobaCoreStub(channel)
+CtxStorage().set(STUB_KEY, stub)
 
 @bot.error_handler.register_error_handler(RuntimeError)
 async def runtime_error_handler(e: RuntimeError):
     print("Runtime error has occured", e)
 
-@bot.loop_wrapper.interval(seconds=15)
-async def cool_printer():
-    await mailing_task()
+# @bot.loop_wrapper.interval(seconds=15)
+# async def cool_printer():
+#     await mailing_task()
 
-@bot.loop_wrapper.interval(seconds=15)
-async def cool_queuer():
-    await queue_task()
+# @bot.loop_wrapper.interval(seconds=15)
+# async def cool_queuer():
+#     await queue_task()
 
 if __name__ == "__main__":
     try:
         bot.run_forever()
-    except Exception:
-        session.close()
+    except Exception as exc:
+        channel.close()
+        print(exc)
