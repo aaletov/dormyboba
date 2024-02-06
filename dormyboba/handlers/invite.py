@@ -79,7 +79,7 @@ async def invite_client(message: Message) -> None:
 @invite_labeler.message(payload={"command": "register"})
 async def register(message: Message) -> None:
     await state_dispenser.set(message.peer_id, RegisterState.PENDING_CODE)
-    CtxStorage().set(message.peer_id, {})
+    CtxStorage().set(message.peer_id, apiv1.CreateUserRequest())
     await message.answer("Введите проверочный код", keyboard=KEYBOARD_EMPTY)
 
 @invite_labeler.message(state=RegisterState.PENDING_CODE)
@@ -101,9 +101,9 @@ async def pending_code(message: Message) -> None:
         if res.role is None:
             raise ValueError("Некорректный проверочный код")
 
-        user: dict = CtxStorage().get(message.peer_id)
-        user["role_id"] = res.role.role_id
-        user["code"] = code
+        user: apiv1.CreateUserRequest = CtxStorage().get(message.peer_id)
+        user.role_id = res.role.role_id
+        user.verification_code = code
     except:
         await state_dispenser.set(message.peer_id, RegisterState.PENDING_GROUP)
         await message.answer("Введите проверочный код повторно")        
@@ -136,18 +136,18 @@ async def pending_group(message: Message) -> None:
         return
     
     groups = match.groups()
-    user: dict = CtxStorage().get(message.peer_id)
+    user: apiv1.CreateUserRequest = CtxStorage().get(message.peer_id)
 
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     stub.CreateUser(
         apiv1.CreateUserRequest(
             user_id=message.peer_id,
             institute_id=groups[0],
-            role_id=user["role_id"],
+            role_id=user.role_id,
             academic_type_id=groups[1],
             year=groups[4],
             group="".join(groups[4:7]),
-            verification_code=user["code"],
+            verification_code=user.verification_code,
         ),
     )
 

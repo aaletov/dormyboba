@@ -35,7 +35,7 @@ KEYBOARD_QUEUE = (
     
 @queue_labeler.message(payload={"command": "queue"})
 async def queue(message: Message) -> None:
-    CtxStorage().set(message.peer_id, {})
+    CtxStorage().set(message.peer_id, apiv1.CreateQueueRequest())
     await message.answer("Начат процесс создания очереди", keyboard=KEYBOARD_QUEUE)
 
 @queue_labeler.message(payload={"command": "queue_title"})
@@ -45,8 +45,8 @@ async def queue_title(message: Message) -> None:
 
 @queue_labeler.message(state=QueueState.PENDING_TITLE)
 async def pending_title(message: Message) -> None:
-    queue: dict = CtxStorage().get(message.peer_id)
-    queue["title"] = message.text
+    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
+    queue.title = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Название очереди сохранено", keyboard=KEYBOARD_QUEUE)
 
@@ -57,8 +57,8 @@ async def queue_description(message: Message) -> None:
 
 @queue_labeler.message(state=QueueState.PENDING_DESCRIPTION)
 async def pending_description(message: Message) -> None:
-    queue: dict = CtxStorage().get(message.peer_id)
-    queue["description"] = message.text
+    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
+    queue.description = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Описание очереди сохранено", keyboard=KEYBOARD_QUEUE)
 
@@ -82,8 +82,8 @@ async def pending_open(message: Message) -> None:
     
     open = cast(datetime, open)
     open = datetime.combine(datetime.now().date(), open.time())
-    queue: dict = CtxStorage().get(message.peer_id)
-    queue["open"] = open
+    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
+    queue.open = open
 
     await state_dispenser.delete(message.peer_id)
     await message.answer("Время открытия очереди сохранено", keyboard=KEYBOARD_QUEUE)
@@ -106,8 +106,8 @@ async def pending_close(message: Message) -> None:
         return
     
     close = close(datetime, close)
-    queue: dict = CtxStorage().get(message.peer_id)
-    queue["close"] = close
+    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
+    queue.close = close
 
     await state_dispenser.delete(message.peer_id)
     await message.answer("Время закрытия очереди сохранено", keyboard=KEYBOARD_QUEUE)
@@ -115,22 +115,22 @@ async def pending_close(message: Message) -> None:
 @queue_labeler.message(payload={"command": "queue_done"})
 async def queue_done(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    queue: dict = CtxStorage().get(message.peer_id)
+    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
 
-    if not ("title" in queue):
+    if queue.title == "":
         await message.answer("Не задано название очереди!", keyboard=KEYBOARD_QUEUE)
         return
 
-    if not ("open" in queue):
+    if queue.open == "":
         await message.answer("Не задано время открытия очереди!", keyboard=KEYBOARD_QUEUE)
         return
 
     stub.CreateQueue(
         apiv1.CreateQueueRequest(
-            title=queue["title"],
-            description=queue["description"],
-            open=queue["open"],
-            close=queue["close"],
+            title=queue.title,
+            description=queue.description,
+            open=queue.open,
+            close=queue.close,
         )
     )
 

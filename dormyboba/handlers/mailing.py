@@ -37,7 +37,7 @@ KEYBOARD_MAILING = (
 
 @mailing_labeler.message(payload={"command": "mailing"})
 async def mailing(message: Message) -> None:
-    CtxStorage().set(message.peer_id, {})
+    CtxStorage().set(message.peer_id, apiv1.CreateMailingRequest())
     await message.answer("Начат процесс создания рассылки", keyboard=KEYBOARD_MAILING)
 
 @mailing_labeler.message(payload={"command": "mailing_theme"})
@@ -47,8 +47,8 @@ async def mailing_theme(message: Message) -> None:
 
 @mailing_labeler.message(state=MailingState.PENDING_THEME)
 async def pending_theme(message: Message) -> None:
-    mailing: dict = CtxStorage().get(message.peer_id)
-    mailing["theme"] = message.text
+    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
+    mailing.theme = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Тема сообщения сохранена", keyboard=KEYBOARD_MAILING)
 
@@ -59,8 +59,8 @@ async def mailing_text(message: Message) -> None:
 
 @mailing_labeler.message(state=MailingState.PENDING_TEXT)
 async def pending_text(message: Message) -> None:
-    mailing: dict = CtxStorage().get(message.peer_id)
-    mailing["mailing_text"] = message.text
+    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
+    mailing.mailing_text = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Текст сообщения сохранен", keyboard=KEYBOARD_MAILING)
 
@@ -81,13 +81,13 @@ async def pending_date(message: Message) -> None:
         return
     
     at = cast(datetime, at)
-    mailing: dict = CtxStorage().get(message.peer_id)
+    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
     
-    if not("at" in mailing):
-        mailing["at"] = at
+    if mailing.at is None:
+        mailing.at = at
     else:
-        old_at: datetime = mailing["at"]
-        mailing["at"] = old_at.replace(
+        old_at: datetime = mailing.at
+        mailing.at = old_at.replace(
             year=at.year,
             month=at.month,
             day=at.day
@@ -113,13 +113,13 @@ async def pending_time(message: Message) -> None:
         return
     
     at = cast(datetime, at)
-    mailing: dict = CtxStorage().get(message.peer_id)
+    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
 
-    if not("at" in mailing):
-        mailing["at"] = at
+    if mailing.at is None:
+        mailing.at = at
     else:
-        old_at: datetime = mailing["at"]
-        mailing["at"] = old_at.replace(
+        old_at: datetime = mailing.at
+        mailing.at = old_at.replace(
             hour=at.hour,
             minute=at.minute,
             second=at.second,
@@ -171,8 +171,8 @@ async def mailing_filter_institute_got(message: Message) -> None:
         ),
     )
 
-    mailing: dict = CtxStorage().get(message.peer_id)
-    mailing["institute_id"] = res.institute.institute_id
+    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
+    mailing.institute_id = res.institute.institute_id
     await message.answer("Институт сохранён", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_filter_academic_type"})
@@ -197,8 +197,8 @@ async def mailing_filter_academic_type_got(message: Message) -> None:
             type_name=message.text,
         ),
     )
-    mailing: dict = CtxStorage().get(message.peer_id)
-    mailing["academic_type_id"] = res.academic_type.type_id
+    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
+    mailing.academic_type_id = res.academic_type.type_id
     await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
 KEYBOARD_COURSE = (
@@ -228,26 +228,26 @@ async def mailing_filter_course_got(message: Message) -> None:
         return
     else:
         mailing = CtxStorage().get(message.peer_id)
-        mailing["year"] = year
+        mailing.year = year
         await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_done"})
 async def mailing_time(message: Message) -> None:    
-    mailing: dict = CtxStorage().get(message.peer_id)
+    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
     
-    if not ("mailing_text" in mailing):
+    if mailing.mailing_text == "":
         await message.answer("Не задан текст рассылки!", keyboard=KEYBOARD_MAILING)
         return
 
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     stub.CreateMailing(
         apiv1.CreateMailingRequest(
-            theme=mailing["theme"],
-            mailing_text=mailing["mailing_text"],
-            at=mailing["at"],
-            institute_id=mailing["institute_id"],
-            academic_type_id=mailing["academic_type_id"],
-            year=mailing["year"],
+            theme=mailing.theme,
+            mailing_text=mailing.mailing_text,
+            at=mailing.at,
+            institute_id=mailing.institute_id,
+            academic_type_id=mailing.academic_type_id,
+            year=mailing.year,
         ),
     )
 
@@ -266,7 +266,7 @@ async def mailing_daemon() -> None:
         event = cast(apiv1.MailingEvent, event)
 
         message = ""
-        if event.mailing.theme is None:
+        if event.mailing.theme == "":
             message = event.mailing.mailing_text
         else:
             message = (
