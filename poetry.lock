@@ -185,8 +185,8 @@ develop = false
 [package.source]
 type = "git"
 url = "https://github.com/aaletov/dormyboba-api.git"
-reference = "6-fix-3-mailing-and-queue-events-not-in-spec"
-resolved_reference = "1026798cd212fffabdd130947a8597ccc859a992"
+reference = "main"
+resolved_reference = "84a76562a471a0be5f8b0e695962e3fb0b6d6f67"
 subdirectory = "api/generated/python"
 
 [[package]]
@@ -875,4 +875,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "cf8264458d30e20de1cf2227b29e35b1608880fee30c7ab8527a315c8dd6c548"
+content-hash = "4a851345b9497c090b2c2b50c6df4351c99a8391f8c083d872acbc40df8f71de"
