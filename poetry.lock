@@ -186,7 +186,7 @@ develop = false
 type = "git"
 url = "https://github.com/aaletov/dormyboba-api.git"
 reference = "6-fix-3-mailing-and-queue-events-not-in-spec"
-resolved_reference = "ce2d9bfffffaad009bba263ae7e6ca14c2036bfa"
+resolved_reference = "1026798cd212fffabdd130947a8597ccc859a992"
 subdirectory = "api/generated/python"
 
 [[package]]

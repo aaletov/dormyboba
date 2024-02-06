@@ -9,7 +9,7 @@ readme = "README.md"
 python = ">=3.11,<4.0"
 vkbottle = "^4.3.12"
 pyyaml = "^6.0.1"
-dormyboba-api = {git = "https://github.com/aaletov/dormyboba-api.git", rev = "5-fix-2-sheet-manipulation-not-in-spec", subdirectory = "api/generated/python"}
+dormyboba-api = {git = "https://github.com/aaletov/dormyboba-api.git", rev = "6-fix-3-mailing-and-queue-events-not-in-spec", subdirectory = "api/generated/python"}
 grpcio = "^1.60.1"
 
 

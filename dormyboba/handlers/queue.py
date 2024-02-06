@@ -207,6 +207,16 @@ async def queue_complete(message: Message) -> None:
 
     await message.answer("Очередь передана следующему человеку")
 
+def build_join_keyboard(queue_id: int) -> str:
+    return (
+        Keyboard(inline=True)
+        .add(Text(
+            label="Занять очередь",
+            payload={"command": "queue_join", "queue_id": queue_id},
+        ))
+        .get_json()
+    )
+
 async def queue_daemon() -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     for response in stub.QueueEvent():
@@ -228,6 +238,7 @@ async def queue_daemon() -> None:
             await api.messages.send(
                 message=message,
                 user_ids=user_ids,
-                random_id=random_id()
+                random_id=random_id(),
+                keyboard=build_join_keyboard(event.queue.queue_id),
             )
         yield
