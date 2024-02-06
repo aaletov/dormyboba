@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Coroutine
 from datetime import datetime
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
@@ -6,6 +6,7 @@ import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 from ..config import api, state_dispenser, STUB_KEY
 from .common import KEYBOARD_START, KEYBOARD_EMPTY
+from .random import random_id
 
 mailing_labeler = BotLabeler()
 
@@ -250,3 +251,27 @@ async def mailing_time(message: Message) -> None:
     )
 
     await message.answer("Рассылка успешно создана!", keyboard=KEYBOARD_START)
+
+async def mailing_daemon() -> None:
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    for response in stub.MailingEvent():
+        response = cast(apiv1.MailingEventResponse, response)
+        for event in response.events:
+            event = cast(apiv1.MailingEvent, event)
+
+            message = ""
+            if event.mailing.theme is None:
+                message = event.mailing.mailing_text
+            else:
+                message = (
+                    event.mailing.theme +
+                    "\n\n" +
+                    event.mailing.mailing_text
+                )
+            user_ids = list([user.user_id for user in event.users])
+            await api.messages.send(
+                message=message,
+                user_ids=user_ids,
+                random_id=random_id()
+            )
+        yield

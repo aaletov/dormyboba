@@ -1,4 +1,4 @@
-from typing import Callable, cast
+from typing import cast, Coroutine
 from datetime import datetime
 from vkbottle import Keyboard, Text, VKApps, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
@@ -206,3 +206,28 @@ async def queue_complete(message: Message) -> None:
         )
 
     await message.answer("Очередь передана следующему человеку")
+
+async def queue_daemon() -> None:
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    for response in stub.QueueEvent():
+        response = cast(apiv1.QueueEventResponse, response)
+        for event in response.events:
+            event = cast(apiv1.QueueEvent, event)
+
+            message = (
+                "Открыта очередь" +
+                " " +
+                f"\"{event.queue.title}\""
+            )
+            if event.queue.description is not None:
+                message += (
+                    "\n\n" +
+                    event.queue.description
+                )
+            user_ids = list([user.user_id for user in event.users])
+            await api.messages.send(
+                message=message,
+                user_ids=user_ids,
+                random_id=random_id()
+            )
+        yield

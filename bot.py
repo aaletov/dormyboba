@@ -2,7 +2,8 @@ from vkbottle import Bot, CtxStorage
 import grpc
 from dormyboba.config import labeler, api, state_dispenser, STUB_KEY
 from dormyboba.handlers import common_labeler, invite_labeler, mailing_labeler, queue_labeler, defect_labeler
-from dormyboba.daemon_tasks import mailing_task, queue_task
+from dormyboba.handlers.mailing import mailing_daemon
+from dormyboba.handlers.queue import queue_daemon
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 
@@ -26,16 +27,10 @@ CtxStorage().set(STUB_KEY, stub)
 async def runtime_error_handler(e: RuntimeError):
     print("Runtime error has occured", e)
 
-# @bot.loop_wrapper.interval(seconds=15)
-# async def cool_printer():
-#     await mailing_task()
-
-# @bot.loop_wrapper.interval(seconds=15)
-# async def cool_queuer():
-#     await queue_task()
-
 if __name__ == "__main__":
     try:
+        bot.loop_wrapper.add_task(mailing_daemon())
+        bot.loop_wrapper.add_task(queue_daemon())
         bot.run_forever()
     except Exception as exc:
         channel.close()
