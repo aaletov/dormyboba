@@ -1,7 +1,8 @@
-from typing import cast, Coroutine
+from typing import cast, Optional, Iterator
 from datetime import datetime
 from vkbottle import Keyboard, Text, VKApps, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
+from google.protobuf.empty_pb2 import Empty
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 from ..config import api, state_dispenser, STUB_KEY
@@ -217,28 +218,32 @@ def build_join_keyboard(queue_id: int) -> str:
         .get_json()
     )
 
-async def queue_daemon() -> None:
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    for response in stub.QueueEvent():
-        response = cast(apiv1.QueueEventResponse, response)
-        for event in response.events:
-            event = cast(apiv1.QueueEvent, event)
+queue_event_iterator: Optional[Iterator] = None 
 
-            message = (
-                "Открыта очередь" +
-                " " +
-                f"\"{event.queue.title}\""
+async def queue_daemon() -> None:
+    global queue_event_iterator
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    if queue_event_iterator is None:
+        queue_event_iterator = cast(Iterator, stub.QueueEvent(Empty()))
+    response: apiv1.QueueEventResponse = next(queue_event_iterator)
+
+    for event in response.events:
+        event = cast(apiv1.QueueEvent, event)
+
+        message = (
+            "Открыта очередь" +
+            " " +
+            f"\"{event.queue.title}\""
+        )
+        if event.queue.description is not None:
+            message += (
+                "\n\n" +
+                event.queue.description
             )
-            if event.queue.description is not None:
-                message += (
-                    "\n\n" +
-                    event.queue.description
-                )
-            user_ids = list([user.user_id for user in event.users])
-            await api.messages.send(
-                message=message,
-                user_ids=user_ids,
-                random_id=random_id(),
-                keyboard=build_join_keyboard(event.queue.queue_id),
-            )
-        yield
+        user_ids = list([user.user_id for user in event.users])
+        await api.messages.send(
+            message=message,
+            user_ids=user_ids,
+            random_id=random_id(),
+            keyboard=build_join_keyboard(event.queue.queue_id),
+        )

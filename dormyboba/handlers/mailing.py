@@ -1,7 +1,8 @@
-from typing import cast, Coroutine
+from typing import cast, Optional, Iterator, Generator, Sequence
 from datetime import datetime
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
+from google.protobuf.empty_pb2 import Empty
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 from ..config import api, state_dispenser, STUB_KEY
@@ -252,26 +253,30 @@ async def mailing_time(message: Message) -> None:
 
     await message.answer("Рассылка успешно создана!", keyboard=KEYBOARD_START)
 
-async def mailing_daemon() -> None:
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    for response in stub.MailingEvent():
-        response = cast(apiv1.MailingEventResponse, response)
-        for event in response.events:
-            event = cast(apiv1.MailingEvent, event)
+mailing_event_iterator: Optional[Iterator] = None 
 
-            message = ""
-            if event.mailing.theme is None:
-                message = event.mailing.mailing_text
-            else:
-                message = (
-                    event.mailing.theme +
-                    "\n\n" +
-                    event.mailing.mailing_text
-                )
-            user_ids = list([user.user_id for user in event.users])
-            await api.messages.send(
-                message=message,
-                user_ids=user_ids,
-                random_id=random_id()
+async def mailing_daemon() -> None:
+    global mailing_event_iterator
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    if mailing_event_iterator is None:
+        mailing_event_iterator = cast(Iterator, stub.MailingEvent(Empty()))
+    response: apiv1.MailingEventResponse = next(mailing_event_iterator)
+
+    for event in response.events:
+        event = cast(apiv1.MailingEvent, event)
+
+        message = ""
+        if event.mailing.theme is None:
+            message = event.mailing.mailing_text
+        else:
+            message = (
+                event.mailing.theme +
+                "\n\n" +
+                event.mailing.mailing_text
             )
-        yield
+        user_ids = list([user.user_id for user in event.users])
+        await api.messages.send(
+            message=message,
+            user_ids=user_ids,
+            random_id=random_id()
+        )
