@@ -44,7 +44,7 @@ def build_keyboard_invite(user_role: str) -> str:
 @invite_labeler.message(payload={"command": "invite"})
 async def invite(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetUserByIdResponse = stub.GetUserById(
+    res: apiv1.GetUserByIdResponse = await stub.GetUserById(
         apiv1.GetUserByIdRequest(
             user_id=message.peer_id,
         ),
@@ -52,9 +52,9 @@ async def invite(message: Message) -> None:
     await message.answer("Выберите роль нового пользователя",
                          keyboard=build_keyboard_invite(res.user.role.role_name))
 
-def generate_code(role_name: str) -> int:
+async def generate_code(role_name: str) -> int:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GenerateVerificationCodeResponse = stub.GenerateVerificationCode(
+    res: apiv1.GenerateVerificationCodeResponse = await stub.GenerateVerificationCode(
         apiv1.GenerateVerificationCodeRequest(
             role_name=role_name,
         ),
@@ -63,23 +63,23 @@ def generate_code(role_name: str) -> int:
 
 @invite_labeler.message(payload={"command": "inviteAdmin"})
 async def invite_admin(message: Message) -> None:
-    code = generate_code("admin")
+    code = await generate_code("admin")
     await message.answer(f"Код регистрации: {code}", keyboard=KEYBOARD_START)
 
 @invite_labeler.message(payload={"command": "inviteCouncilMem"})
 async def invite_client(message: Message) -> None:
-    code = generate_code("council_member")
+    code = await generate_code("council_member")
     await message.answer(f"Код регистрации: {code}", keyboard=KEYBOARD_START)
 
 @invite_labeler.message(payload={"command": "inviteStudent"})
 async def invite_client(message: Message) -> None:
-    code = generate_code("student")
+    code = await generate_code("student")
     await message.answer(f"Код регистрации: {code}", keyboard=KEYBOARD_START)
 
 @invite_labeler.message(payload={"command": "register"})
 async def register(message: Message) -> None:
     await state_dispenser.set(message.peer_id, RegisterState.PENDING_CODE)
-    CtxStorage().set(message.peer_id, apiv1.CreateUserRequest())
+    CtxStorage().set(message.peer_id, {})
     await message.answer("Введите проверочный код", keyboard=KEYBOARD_EMPTY)
 
 @invite_labeler.message(state=RegisterState.PENDING_CODE)
@@ -92,7 +92,7 @@ async def pending_code(message: Message) -> None:
             raise ValueError("Некорректный проверочный код")
         code = match.group()
 
-        res: apiv1.GetRoleByVerificationCodeResponse = stub.GetRoleByVerificationCode(
+        res: apiv1.GetRoleByVerificationCodeResponse = await stub.GetRoleByVerificationCode(
             apiv1.GetRoleByVerificationCodeRequest(
                 code=code,
             ),
@@ -101,9 +101,9 @@ async def pending_code(message: Message) -> None:
         if res.role is None:
             raise ValueError("Некорректный проверочный код")
 
-        user: apiv1.CreateUserRequest = CtxStorage().get(message.peer_id)
-        user.role_id = res.role.role_id
-        user.verification_code = code
+        user: dict = CtxStorage().get(message.peer_id)
+        user["role_id"] = res.role.role_id
+        user["verification_code"] = code
     except:
         await state_dispenser.set(message.peer_id, RegisterState.PENDING_GROUP)
         await message.answer("Введите проверочный код повторно")        
@@ -136,18 +136,18 @@ async def pending_group(message: Message) -> None:
         return
     
     groups = match.groups()
-    user: apiv1.CreateUserRequest = CtxStorage().get(message.peer_id)
+    user: dict = CtxStorage().get(message.peer_id)
 
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    stub.CreateUser(
+    await stub.CreateUser(
         apiv1.CreateUserRequest(
             user_id=message.peer_id,
             institute_id=groups[0],
-            role_id=user.role_id,
+            role_id=user["role_id"],
             academic_type_id=groups[1],
             year=groups[4],
             group="".join(groups[4:7]),
-            verification_code=user.verification_code,
+            verification_code=user["verification_code"],
         ),
     )
 

@@ -1,7 +1,10 @@
 from typing import cast, Optional, Iterator
+import logging
 from datetime import datetime
+import asyncio
 from vkbottle import Keyboard, Text, VKApps, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
+from google.protobuf.timestamp_pb2 import Timestamp
 from google.protobuf.empty_pb2 import Empty
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
@@ -35,7 +38,7 @@ KEYBOARD_QUEUE = (
     
 @queue_labeler.message(payload={"command": "queue"})
 async def queue(message: Message) -> None:
-    CtxStorage().set(message.peer_id, apiv1.CreateQueueRequest())
+    CtxStorage().set(message.peer_id, {})
     await message.answer("Начат процесс создания очереди", keyboard=KEYBOARD_QUEUE)
 
 @queue_labeler.message(payload={"command": "queue_title"})
@@ -45,8 +48,8 @@ async def queue_title(message: Message) -> None:
 
 @queue_labeler.message(state=QueueState.PENDING_TITLE)
 async def pending_title(message: Message) -> None:
-    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
-    queue.title = message.text
+    queue: dict = CtxStorage().get(message.peer_id)
+    queue["title"] = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Название очереди сохранено", keyboard=KEYBOARD_QUEUE)
 
@@ -57,8 +60,8 @@ async def queue_description(message: Message) -> None:
 
 @queue_labeler.message(state=QueueState.PENDING_DESCRIPTION)
 async def pending_description(message: Message) -> None:
-    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
-    queue.description = message.text
+    queue: dict = CtxStorage().get(message.peer_id)
+    queue["description"] = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Описание очереди сохранено", keyboard=KEYBOARD_QUEUE)
 
@@ -82,8 +85,8 @@ async def pending_open(message: Message) -> None:
     
     open = cast(datetime, open)
     open = datetime.combine(datetime.now().date(), open.time())
-    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
-    queue.open = open
+    queue: dict = CtxStorage().get(message.peer_id)
+    queue["open"] = open
 
     await state_dispenser.delete(message.peer_id)
     await message.answer("Время открытия очереди сохранено", keyboard=KEYBOARD_QUEUE)
@@ -106,8 +109,8 @@ async def pending_close(message: Message) -> None:
         return
     
     close = close(datetime, close)
-    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
-    queue.close = close
+    queue: dict = CtxStorage().get(message.peer_id)
+    queue["close"] = close
 
     await state_dispenser.delete(message.peer_id)
     await message.answer("Время закрытия очереди сохранено", keyboard=KEYBOARD_QUEUE)
@@ -115,23 +118,24 @@ async def pending_close(message: Message) -> None:
 @queue_labeler.message(payload={"command": "queue_done"})
 async def queue_done(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    queue: apiv1.CreateQueueRequest = CtxStorage().get(message.peer_id)
+    queue: dict = CtxStorage().get(message.peer_id)
 
-    if queue.title == "":
+    if not("title" in queue):
         await message.answer("Не задано название очереди!", keyboard=KEYBOARD_QUEUE)
         return
 
-    if queue.open == "":
+    if not("open" in queue):
         await message.answer("Не задано время открытия очереди!", keyboard=KEYBOARD_QUEUE)
         return
 
-    stub.CreateQueue(
-        apiv1.CreateQueueRequest(
-            title=queue.title,
-            description=queue.description,
-            open=queue.open,
-            close=queue.close,
-        )
+    queue["open"] = Timestamp().FromDatetime(queue["open"])
+
+    if "close" in queue:
+        queue["close"] = Timestamp().FromDatetime(queue["close"])
+
+
+    await stub.CreateQueue(
+        apiv1.CreateQueueRequest(**queue)
     )
 
     await message.answer("Очередь успешно создана!", keyboard=KEYBOARD_START)
@@ -159,7 +163,7 @@ def build_leave_keyboard(queue_id: int) -> Keyboard:
 async def queue_join(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     queue_id: str = message.get_payload_json()["queue_id"]
-    res: apiv1.AddPersonToQueueResponse = stub.AddPersonToQueue(
+    res: apiv1.AddPersonToQueueResponse = await stub.AddPersonToQueue(
         apiv1.AddPersonToQueueRequest(
             queue_id=queue_id,
             user_id=message.peer_id,
@@ -176,8 +180,8 @@ async def queue_join(message: Message) -> None:
 @queue_labeler.message(payload_contains={"command": "queue_leave"})
 async def queue_leave(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    queue_id: str = message.payload["queue_id"]
-    stub.RemovePersonFromQueue(
+    queue_id: str = message.get_payload_json()["queue_id"]
+    await stub.RemovePersonFromQueue(
         apiv1.RemovePersonFromQueueRequest(
             queue_id=queue_id,
             user_id=message.peer_id,
@@ -191,7 +195,7 @@ async def queue_complete(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     queue_id: str = message.get_payload_json()["queue_id"]
 
-    res: apiv1.PersonCompleteQueueResponse = stub.PersonCompleteQueue(
+    res: apiv1.PersonCompleteQueueResponse = await stub.PersonCompleteQueue(
         apiv1.PersonCompleteQueueRequest(
             queue_id=queue_id,
             user_id=message.peer_id,
@@ -218,32 +222,30 @@ def build_join_keyboard(queue_id: int) -> str:
         .get_json()
     )
 
-queue_event_iterator: Optional[Iterator] = None 
-
-async def queue_daemon() -> None:
-    global queue_event_iterator
+async def queue_task() -> None:
+    logging.debug("Executing queue task...")
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    if queue_event_iterator is None:
-        queue_event_iterator = cast(Iterator, stub.QueueEvent(Empty()))
-    response: apiv1.QueueEventResponse = next(queue_event_iterator)
 
-    for event in response.events:
-        event = cast(apiv1.QueueEvent, event)
+    async for response in stub.QueueEvent(Empty()):
+        response = cast(apiv1.QueueEventResponse, response)
+        logging.debug("New QueueEvent was received")
+        for event in response.events:
+            event = cast(apiv1.QueueEvent, event)
 
-        message = (
-            "Открыта очередь" +
-            " " +
-            f"\"{event.queue.title}\""
-        )
-        if event.queue.description is not None:
-            message += (
-                "\n\n" +
-                event.queue.description
+            message = (
+                "Открыта очередь" +
+                " " +
+                f"\"{event.queue.title}\""
             )
-        user_ids = list([user.user_id for user in event.users])
-        await api.messages.send(
-            message=message,
-            user_ids=user_ids,
-            random_id=random_id(),
-            keyboard=build_join_keyboard(event.queue.queue_id),
-        )
+            if event.queue.description is not None:
+                message += (
+                    "\n\n" +
+                    event.queue.description
+                )
+            user_ids = list([user.user_id for user in event.users])
+            await api.messages.send(
+                message=message,
+                user_ids=user_ids,
+                random_id=random_id(),
+                keyboard=build_join_keyboard(event.queue.queue_id),
+            )

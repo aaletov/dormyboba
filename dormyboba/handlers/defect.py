@@ -28,9 +28,7 @@ KEYBOARD_DEFECT = (
 
 @defect_labeler.message(payload={"command": "defect"})
 async def defect(message: Message) -> None:
-    CtxStorage().set(message.peer_id, apiv1.CreateDefectRequest(
-        defect=apiv1.Defect(),
-    ))
+    CtxStorage().set(message.peer_id, {})
     await message.answer("Начат процесс создания проблемы", keyboard=KEYBOARD_DEFECT)
 
 KEYBOARD_DEFECT_TYPE = (
@@ -61,8 +59,8 @@ async def defect_type(message: Message) -> None:
 @defect_labeler.message(payload_contains={"command": "defect_set_type"})
 async def defect_set_type(message: Message) -> None:
     payload: dict = message.get_payload_json()
-    req: apiv1.CreateDefectRequest = CtxStorage().get(message.peer_id)
-    req.defect.defect_type = payload["type"]
+    defect: dict = CtxStorage().get(message.peer_id)
+    defect["defect_type"] = payload["type"]
     await message.answer("Тип проблемы сохранён", keyboard=KEYBOARD_DEFECT)
 
 @defect_labeler.message(payload={"command": "defect_description"})
@@ -72,34 +70,10 @@ async def defect_description(message: Message) -> None:
 
 @defect_labeler.message(state=DefectState.PENDING_DESCRIPTION)
 async def defect_description(message: Message) -> None:
-    req: apiv1.CreateDefectRequest = CtxStorage().get(message.peer_id)
-    req.defect.description = message.text
+    defect: dict = CtxStorage().get(message.peer_id)
+    defect["description"] = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Описание успешно сохранено", keyboard=KEYBOARD_DEFECT)
-
-@defect_labeler.message(payload={"command": "defect_done"})
-async def defect_done(message: Message) -> None:
-    req: apiv1.CreateDefectRequest = CtxStorage().get(message.peer_id)
-
-    if req.defect.defect_type is None:
-        await message.answer("Не задано название очереди!", keyboard=KEYBOARD_DEFECT)
-        return
-
-    if req.defect.description == "":
-        await message.answer("Не задано время открытия очереди!", keyboard=KEYBOARD_DEFECT)
-        return
-
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    defect_id = "DD" + str(random_id())
-    req.defect.defect_id = defect_id
-    stub.CreateDefect(req)
-    stub.AssignDefect(
-        apiv1.AssignDefectRequest(
-            defect_id=defect_id,
-        ),
-    )
-    await message.answer(f"Проблема успешно создана. Номер проблемы - {defect_id}",
-                         keyboard=KEYBOARD_START)
 
 def build_accept_keyboard(defect_id: int) -> str:
     return (
@@ -110,6 +84,39 @@ def build_accept_keyboard(defect_id: int) -> str:
             "status": apiv1.ACCEPTED,
         }))
         .get_json()
+    )
+
+@defect_labeler.message(payload={"command": "defect_done"})
+async def defect_done(message: Message) -> None:
+    defect: dict = CtxStorage().get(message.peer_id)
+
+    if not("defect_type" in defect):
+        await message.answer("Не задан тип проблемы!", keyboard=KEYBOARD_DEFECT)
+        return
+
+    if not("description" in defect):
+        await message.answer("Не задано описание проблемы!", keyboard=KEYBOARD_DEFECT)
+        return
+
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+
+    res: apiv1.CreateDefectResponse = await stub.CreateDefect(
+        apiv1.CreateDefectRequest(user_id=message.peer_id, **defect),
+    )
+    defect_id = res.defect.defect_id
+    res: apiv1.AssignDefectResponse = await stub.AssignDefect(
+        apiv1.AssignDefectRequest(
+            defect_id=defect_id,
+        ),
+    )
+    
+    await message.answer(f"Проблема успешно создана. Номер проблемы - {defect_id}",
+                         keyboard=KEYBOARD_START)
+    await api.messages.send(
+        user_id=res.assigned_user_id,
+        message=f"Создана проблема с номером {defect_id}",
+        random_id=random_id(),
+        keyboard=build_accept_keyboard(defect_id)
     )
     
 def build_resolved_keyboard(defect_id: int) -> str:
@@ -135,16 +142,16 @@ async def defect_accept(message: Message) -> None:
     payload = message.get_payload_json()
 
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetDefectByIdResponse = stub.GetDefectById(
+    res: apiv1.GetDefectByIdResponse = await stub.GetDefectById(
         apiv1.GetDefectByIdRequest(
             defect_id=payload["defect_id"],
         ),
     )
     defect = res.defect
     defect.defect_status = payload["status"]
-    stub.UpdateDefect(
+    await stub.UpdateDefect(
         apiv1.UpdateDefectRequest(
-            defect,
+            defect=defect,
         ),
     )
 
@@ -160,16 +167,16 @@ async def defect_resolved(message: Message) -> None:
     payload = message.get_payload_json()
 
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetDefectByIdResponse = stub.GetDefectById(
+    res: apiv1.GetDefectByIdResponse = await stub.GetDefectById(
         apiv1.GetDefectByIdRequest(
             defect_id=payload["defect_id"],
         ),
     )
     defect = res.defect
     defect.defect_status = payload["status"]
-    stub.UpdateDefect(
+    await stub.UpdateDefect(
         apiv1.UpdateDefectRequest(
-            defect,
+            defect=defect,
         ),
     )
 

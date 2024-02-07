@@ -74,7 +74,7 @@ KEYBOARD_EMPTY = Keyboard().get_json()
 @common_labeler.message(payload={"command": "start"})
 async def help(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetUserByIdResponse = stub.GetUserById(
+    res: apiv1.GetUserByIdResponse = await stub.GetUserById(
         apiv1.GetUserByIdRequest(
             user_id=message.peer_id,
         ),

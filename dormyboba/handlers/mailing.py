@@ -1,4 +1,5 @@
 from typing import cast, Optional, Iterator, Generator, Sequence
+import logging
 from datetime import datetime
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
@@ -37,7 +38,7 @@ KEYBOARD_MAILING = (
 
 @mailing_labeler.message(payload={"command": "mailing"})
 async def mailing(message: Message) -> None:
-    CtxStorage().set(message.peer_id, apiv1.CreateMailingRequest())
+    CtxStorage().set(message.peer_id, {})
     await message.answer("Начат процесс создания рассылки", keyboard=KEYBOARD_MAILING)
 
 @mailing_labeler.message(payload={"command": "mailing_theme"})
@@ -47,8 +48,8 @@ async def mailing_theme(message: Message) -> None:
 
 @mailing_labeler.message(state=MailingState.PENDING_THEME)
 async def pending_theme(message: Message) -> None:
-    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
-    mailing.theme = message.text
+    mailing: dict = CtxStorage().get(message.peer_id)
+    mailing["theme"] = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Тема сообщения сохранена", keyboard=KEYBOARD_MAILING)
 
@@ -59,8 +60,8 @@ async def mailing_text(message: Message) -> None:
 
 @mailing_labeler.message(state=MailingState.PENDING_TEXT)
 async def pending_text(message: Message) -> None:
-    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
-    mailing.mailing_text = message.text
+    mailing: dict = CtxStorage().get(message.peer_id)
+    mailing["mailing_text"] = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Текст сообщения сохранен", keyboard=KEYBOARD_MAILING)
 
@@ -81,13 +82,13 @@ async def pending_date(message: Message) -> None:
         return
     
     at = cast(datetime, at)
-    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
+    mailing: dict = CtxStorage().get(message.peer_id)
     
-    if mailing.at is None:
-        mailing.at = at
+    if mailing["at"] is None:
+        mailing["at"] = at
     else:
-        old_at: datetime = mailing.at
-        mailing.at = old_at.replace(
+        old_at: datetime = mailing["at"]
+        mailing["at"] = old_at.replace(
             year=at.year,
             month=at.month,
             day=at.day
@@ -113,13 +114,13 @@ async def pending_time(message: Message) -> None:
         return
     
     at = cast(datetime, at)
-    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
+    mailing: dict = CtxStorage().get(message.peer_id)
 
-    if mailing.at is None:
-        mailing.at = at
+    if mailing["at"] is None:
+        mailing["at"] = at
     else:
-        old_at: datetime = mailing.at
-        mailing.at = old_at.replace(
+        old_at: datetime = mailing["at"]
+        mailing["at"] = old_at.replace(
             hour=at.hour,
             minute=at.minute,
             second=at.second,
@@ -151,7 +152,7 @@ async def mailing_filter_back(message: Message) -> None:
 @mailing_labeler.message(payload={"command": "mailing_filter_institute"})
 async def mailing_filter_institute(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetAllInstitutesResponse = stub.GetAllInstitutes()
+    res: apiv1.GetAllInstitutesResponse = await stub.GetAllInstitutes()
     institute_names = [i.institute_name for i in res.institutes]
     keyboard = Keyboard()
     for i, row in enumerate(institute_names):
@@ -165,20 +166,20 @@ async def mailing_filter_institute(message: Message) -> None:
 @mailing_labeler.message(payload={"command": "mailing_filter_institute_got"})
 async def mailing_filter_institute_got(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetInstituteByNameResponse = stub.GetInstituteByName(
+    res: apiv1.GetInstituteByNameResponse = await stub.GetInstituteByName(
         apiv1.GetInstituteByNameRequest(
             institute_name=message.text,
         ),
     )
 
-    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
-    mailing.institute_id = res.institute.institute_id
+    mailing: dict = CtxStorage().get(message.peer_id)
+    mailing["institute_id"] = res.institute.institute_id
     await message.answer("Институт сохранён", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_filter_academic_type"})
 async def mailing_filter_academic_type(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetAllAcademicTypesResponse = stub.GetAllAcademicTypes()
+    res: apiv1.GetAllAcademicTypesResponse = await stub.GetAllAcademicTypes()
     type_names = [t.type_name for t in res.academic_types]
     keyboard = Keyboard()
     for i, row in enumerate(type_names):
@@ -192,13 +193,13 @@ async def mailing_filter_academic_type(message: Message) -> None:
 @mailing_labeler.message(payload={"command": "mailing_filter_academic_type_got"})
 async def mailing_filter_academic_type_got(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetAcademicTypeByNameResponse = stub.GetAcademicTypeByName(
+    res: apiv1.GetAcademicTypeByNameResponse = await stub.GetAcademicTypeByName(
         apiv1.GetAcademicTypeByNameRequest(
             type_name=message.text,
         ),
     )
-    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
-    mailing.academic_type_id = res.academic_type.type_id
+    mailing: dict = CtxStorage().get(message.peer_id)
+    mailing["academic_type_id"] = res.academic_type.type_id
     await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
 KEYBOARD_COURSE = (
@@ -233,50 +234,39 @@ async def mailing_filter_course_got(message: Message) -> None:
 
 @mailing_labeler.message(payload={"command": "mailing_done"})
 async def mailing_time(message: Message) -> None:    
-    mailing: apiv1.CreateMailingRequest = CtxStorage().get(message.peer_id)
+    mailing: dict = CtxStorage().get(message.peer_id)
     
-    if mailing.mailing_text == "":
+    if not("mailing_text" in mailing):
         await message.answer("Не задан текст рассылки!", keyboard=KEYBOARD_MAILING)
         return
 
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    stub.CreateMailing(
-        apiv1.CreateMailingRequest(
-            theme=mailing.theme,
-            mailing_text=mailing.mailing_text,
-            at=mailing.at,
-            institute_id=mailing.institute_id,
-            academic_type_id=mailing.academic_type_id,
-            year=mailing.year,
-        ),
-    )
+    await stub.CreateMailing(apiv1.CreateMailingRequest(**mailing))
 
     await message.answer("Рассылка успешно создана!", keyboard=KEYBOARD_START)
 
-mailing_event_iterator: Optional[Iterator] = None 
-
-async def mailing_daemon() -> None:
-    global mailing_event_iterator
+async def mailing_task() -> None:
+    logging.info("Executing mailing task...")
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    if mailing_event_iterator is None:
-        mailing_event_iterator = cast(Iterator, stub.MailingEvent(Empty()))
-    response: apiv1.MailingEventResponse = next(mailing_event_iterator)
 
-    for event in response.events:
-        event = cast(apiv1.MailingEvent, event)
+    async for response in stub.MailingEvent(Empty()):
+        response = cast(apiv1.MailingEventResponse, response)
+        logging.debug("New MailingEvent was received")
+        for event in response.events:
+            event = cast(apiv1.MailingEvent, event)
 
-        message = ""
-        if event.mailing.theme == "":
-            message = event.mailing.mailing_text
-        else:
-            message = (
-                event.mailing.theme +
-                "\n\n" +
-                event.mailing.mailing_text
+            message = ""
+            if not event.mailing.theme:
+                message = event.mailing.mailing_text
+            else:
+                message = (
+                    event.mailing.theme +
+                    "\n\n" +
+                    event.mailing.mailing_text
+                )
+            user_ids = list([user.user_id for user in event.users])
+            await api.messages.send(
+                message=message,
+                user_ids=user_ids,
+                random_id=random_id()
             )
-        user_ids = list([user.user_id for user in event.users])
-        await api.messages.send(
-            message=message,
-            user_ids=user_ids,
-            random_id=random_id()
-        )
