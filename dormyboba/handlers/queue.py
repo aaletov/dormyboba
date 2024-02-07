@@ -229,23 +229,22 @@ async def queue_task() -> None:
     async for response in stub.QueueEvent(Empty()):
         response = cast(apiv1.QueueEventResponse, response)
         logging.debug("New QueueEvent was received")
-        for event in response.events:
-            event = cast(apiv1.QueueEvent, event)
+        event = response.event
 
-            message = (
-                "Открыта очередь" +
-                " " +
-                f"\"{event.queue.title}\""
+        message = (
+            "Открыта очередь" +
+            " " +
+            f"\"{event.queue.title}\""
+        )
+        if event.queue.description is not None:
+            message += (
+                "\n\n" +
+                event.queue.description
             )
-            if event.queue.description is not None:
-                message += (
-                    "\n\n" +
-                    event.queue.description
-                )
-            user_ids = list([user.user_id for user in event.users])
-            await api.messages.send(
-                message=message,
-                user_ids=user_ids,
-                random_id=random_id(),
-                keyboard=build_join_keyboard(event.queue.queue_id),
-            )
+        user_ids = list([user.user_id for user in event.users])
+        await api.messages.send(
+            message=message,
+            user_ids=user_ids,
+            random_id=random_id(),
+            keyboard=build_join_keyboard(event.queue.queue_id),
+        )

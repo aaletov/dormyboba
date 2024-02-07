@@ -250,11 +250,10 @@ async def mailing_task() -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
 
     async for response in stub.MailingEvent(Empty()):
-        response = cast(apiv1.MailingEventResponse, response)
-        logging.debug("New MailingEvent was received")
-        for event in response.events:
-            event = cast(apiv1.MailingEvent, event)
-
+        try:
+            response = cast(apiv1.MailingEventResponse, response)
+            logging.debug("New MailingEvent was received")
+            event = response.event
             message = ""
             if not event.mailing.theme:
                 message = event.mailing.mailing_text
@@ -270,3 +269,6 @@ async def mailing_task() -> None:
                 user_ids=user_ids,
                 random_id=random_id()
             )
+        except Exception as exc:
+            logging.exception(exc)
+    logging.critical("Leaving mailing_task") #tmp
