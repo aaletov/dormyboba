@@ -135,7 +135,9 @@ async def queue_done(message: Message) -> None:
 
 
     await stub.CreateQueue(
-        apiv1.CreateQueueRequest(**queue)
+        apiv1.CreateQueueRequest(
+            apiv1.Queue(**queue),
+        )
     )
 
     await message.answer("Очередь успешно создана!", keyboard=KEYBOARD_START)

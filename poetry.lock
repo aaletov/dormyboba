@@ -186,7 +186,7 @@ develop = false
 type = "git"
 url = "https://github.com/aaletov/dormyboba-api.git"
 reference = "main"
-resolved_reference = "36ac3ab477bd6279663166ff26eda9578c69ce91"
+resolved_reference = "d83c94b71947472a6bc410424b47f18a7368619c"
 subdirectory = "api/generated/python"
 
 [[package]]

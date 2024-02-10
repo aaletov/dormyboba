@@ -241,7 +241,9 @@ async def mailing_time(message: Message) -> None:
         return
 
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    await stub.CreateMailing(apiv1.CreateMailingRequest(**mailing))
+    await stub.CreateMailing(apiv1.CreateMailingRequest(
+        apiv1.Mailing(**mailing),
+    ))
 
     await message.answer("Рассылка успешно создана!", keyboard=KEYBOARD_START)
 

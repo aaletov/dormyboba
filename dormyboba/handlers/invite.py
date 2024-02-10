@@ -136,18 +136,23 @@ async def pending_group(message: Message) -> None:
         return
     
     groups = match.groups()
-    user: dict = CtxStorage().get(message.peer_id)
+    user_dict: dict = CtxStorage().get(message.peer_id)
+
+    user = apiv1.DormybobaUser(
+        user_id=message.peer_id,
+        institute_id=groups[0],
+        role_id=user_dict["role_id"],
+        academic_type_id=groups[1],
+        year=groups[4],
+        group="".join(groups[4:7]),
+    ),
+    verification_code = user_dict["verification_code"]
 
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     await stub.CreateUser(
         apiv1.CreateUserRequest(
-            user_id=message.peer_id,
-            institute_id=groups[0],
-            role_id=user["role_id"],
-            academic_type_id=groups[1],
-            year=groups[4],
-            group="".join(groups[4:7]),
-            verification_code=user["verification_code"],
+            user=user,
+            verification_code=verification_code,
         ),
     )
 
