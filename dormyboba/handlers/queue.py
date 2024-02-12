@@ -128,15 +128,18 @@ async def queue_done(message: Message) -> None:
         await message.answer("Не задано время открытия очереди!", keyboard=KEYBOARD_QUEUE)
         return
 
-    queue["open"] = Timestamp().FromDatetime(queue["open"])
+    dt = queue["open"]
+    queue["open"] = Timestamp()
+    queue["open"].FromDatetime(dt)
 
     if "close" in queue:
-        queue["close"] = Timestamp().FromDatetime(queue["close"])
-
+        dt = queue["close"]
+        queue["close"] = Timestamp()
+        queue["close"].FromDatetime(dt)
 
     await stub.CreateQueue(
         apiv1.CreateQueueRequest(
-            apiv1.Queue(**queue),
+            queue=apiv1.Queue(**queue),
         )
     )
 

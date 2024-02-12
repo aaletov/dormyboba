@@ -102,7 +102,7 @@ async def defect_done(message: Message) -> None:
 
     res: apiv1.CreateDefectResponse = await stub.CreateDefect(
         apiv1.CreateDefectRequest(
-            apiv1.Defect(user_id=message.peer_id, **defect),
+            defect=apiv1.Defect(user_id=message.peer_id, **defect),
         ),
     )
     defect_id = res.defect.defect_id
