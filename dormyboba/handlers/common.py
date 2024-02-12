@@ -79,7 +79,7 @@ async def help(message: Message) -> None:
             user_id=message.peer_id,
         ),
     )
-    role_name = None if res.user is None else res.user.role.role_name
+    role_name = None if not(res.HasField("user")) else res.user.role.role_name
     users_info = await api.users.get(message.from_id)
     await message.answer("Привет, {}".format(users_info[0].first_name),
                          keyboard=build_keyboard_start(role_name))

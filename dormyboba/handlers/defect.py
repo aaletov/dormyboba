@@ -101,7 +101,9 @@ async def defect_done(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
 
     res: apiv1.CreateDefectResponse = await stub.CreateDefect(
-        apiv1.CreateDefectRequest(user_id=message.peer_id, **defect),
+        apiv1.CreateDefectRequest(
+            defect=apiv1.Defect(user_id=message.peer_id, **defect),
+        ),
     )
     defect_id = res.defect.defect_id
     res: apiv1.AssignDefectResponse = await stub.AssignDefect(
