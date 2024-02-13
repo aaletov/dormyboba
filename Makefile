@@ -31,3 +31,9 @@ puml-all: $(hld_svgs)
 
 .PHONY: docs
 docs: bpmn-all puml-all
+
+image_time=$(shell date +%s)
+.PHONY: docker-image
+docker-image:
+	docker build -t dormyboba:${image_time} .
+	docker tag dormyboba:${image_time} dormyboba:latest

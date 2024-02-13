@@ -1,9 +1,9 @@
 from vkbottle import Bot, CtxStorage
 import grpc
-from dormyboba.config import labeler, api, state_dispenser, STUB_KEY
-from dormyboba.handlers import common_labeler, invite_labeler, mailing_labeler, queue_labeler, defect_labeler
-from dormyboba.handlers.mailing import mailing_task
-from dormyboba.handlers.queue import queue_task
+from .config import labeler, api, state_dispenser, STUB_KEY
+from .handlers import common_labeler, invite_labeler, mailing_labeler, queue_labeler, defect_labeler
+from .handlers.mailing import mailing_task
+from .handlers.queue import queue_task
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 
@@ -19,7 +19,7 @@ bot = Bot(
     state_dispenser=state_dispenser,
 )
 
-channel = grpc.aio.insecure_channel('localhost:50051')
+channel = grpc.aio.insecure_channel('dormyboba_core:50051')
 stub = apiv1grpc.DormybobaCoreStub(channel)
 CtxStorage().set(STUB_KEY, stub)
 

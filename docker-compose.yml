@@ -1,6 +1,12 @@
 version: "3.1"
 
 services:
+  dormyboba:
+    image: "dormyboba:1707849633"
+  dormyboba_core:
+    image: "dormyboba-core:1707849025"
+    ports:
+      - "50051:50051"
   postgresql:
     image: "postgres:15.5-alpine3.18"
     ports:
