@@ -4,10 +4,10 @@ from vkbottle import API, BuiltinStateDispenser
 from vkbottle.bot import BotLabeler
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+CONFIG_PATH = Path("/").resolve() / "config"
 
 config = None
-with open(BASE_DIR / "config.yaml", "r") as yamlfile:
+with open(CONFIG_PATH / "config.yaml", "r") as yamlfile:
     config = yaml.load(yamlfile, Loader=yaml.FullLoader)["dormyboba"]
 
 DOMAIN = config["domain"]
