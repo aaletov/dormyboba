@@ -4,6 +4,7 @@ from datetime import datetime
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
 from google.protobuf.empty_pb2 import Empty
+from google.protobuf.timestamp_pb2 import Timestamp
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 from ..config import api, state_dispenser, STUB_KEY
@@ -233,14 +234,22 @@ async def mailing_filter_course_got(message: Message) -> None:
         await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_done"})
-async def mailing_time(message: Message) -> None:    
+async def mailing_done(message: Message) -> None:
     mailing: dict = CtxStorage().get(message.peer_id)
-    
+
     if not("mailing_text" in mailing):
         await message.answer("Не задан текст рассылки!", keyboard=KEYBOARD_MAILING)
         return
 
+    if "at" in mailing:
+        timestamp = Timestamp()
+        timestamp.FromDatetime(mailing["at"])
+        mailing["at"] = timestamp
+
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+
+    logging.debug(f"Sending CreateMailingRequest: {mailing}")
+
     await stub.CreateMailing(apiv1.CreateMailingRequest(
         mailing=apiv1.Mailing(**mailing),
     ))
