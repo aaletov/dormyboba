@@ -80,11 +80,11 @@ async def pending_date(message: Message) -> None:
         await state_dispenser.set(message.peer_id, MailingState.PENDING_DATE)
         await message.answer("Задайте дату отправки в формате 2022-12-31", keyboard=KEYBOARD_EMPTY)
         return
-    
+
     at = cast(datetime, at)
     mailing: dict = CtxStorage().get(message.peer_id)
-    
-    if mailing["at"] is None:
+
+    if not("at" in mailing):
         mailing["at"] = at
     else:
         old_at: datetime = mailing["at"]
@@ -93,7 +93,7 @@ async def pending_date(message: Message) -> None:
             month=at.month,
             day=at.day
         )
-    
+
     await state_dispenser.delete(message.peer_id)
     await message.answer("Дата отправки сохранена", keyboard=KEYBOARD_MAILING)
 
@@ -112,11 +112,11 @@ async def pending_time(message: Message) -> None:
         await state_dispenser.set(message.peer_id, MailingState.PENDING_TIME)
         await message.answer("Задайте время отправки в формате 23:59:59", keyboard=KEYBOARD_EMPTY)
         return
-    
+
     at = cast(datetime, at)
     mailing: dict = CtxStorage().get(message.peer_id)
 
-    if mailing["at"] is None:
+    if not("at" in mailing):
         mailing["at"] = at
     else:
         old_at: datetime = mailing["at"]
