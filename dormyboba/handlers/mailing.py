@@ -152,11 +152,11 @@ async def mailing_filter_back(message: Message) -> None:
 @mailing_labeler.message(payload={"command": "mailing_filter_institute"})
 async def mailing_filter_institute(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetAllInstitutesResponse = await stub.GetAllInstitutes()
+    res: apiv1.GetAllInstitutesResponse = await stub.GetAllInstitutes(Empty())
     institute_names = [i.institute_name for i in res.institutes]
+    logging.debug(f"Got institute names {institute_names}")
     keyboard = Keyboard()
-    for i, row in enumerate(institute_names):
-        name = row[0]
+    for i, name in enumerate(institute_names):
         keyboard = keyboard.add(Text(name, payload={"command": "mailing_filter_institute_got"}))
         if i != (len(institute_names) - 1):
             keyboard = keyboard.row()
@@ -179,11 +179,10 @@ async def mailing_filter_institute_got(message: Message) -> None:
 @mailing_labeler.message(payload={"command": "mailing_filter_academic_type"})
 async def mailing_filter_academic_type(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetAllAcademicTypesResponse = await stub.GetAllAcademicTypes()
+    res: apiv1.GetAllAcademicTypesResponse = await stub.GetAllAcademicTypes(Empty())
     type_names = [t.type_name for t in res.academic_types]
     keyboard = Keyboard()
-    for i, row in enumerate(type_names):
-        name = row[0]
+    for i, name in enumerate(type_names):
         keyboard = keyboard.add(Text(name, payload={"command": "mailing_filter_academic_type_got"}))
         if i != (len(type_names) - 1):
             keyboard = keyboard.row()
