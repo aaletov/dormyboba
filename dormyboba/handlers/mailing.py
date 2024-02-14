@@ -77,7 +77,6 @@ async def pending_date(message: Message) -> None:
     try:
         at = datetime.strptime(message.text, '%Y-%m-%d')
     except ValueError as ve1:
-        print('ValueError 1:', ve1)
         await state_dispenser.set(message.peer_id, MailingState.PENDING_DATE)
         await message.answer("Задайте дату отправки в формате 2022-12-31", keyboard=KEYBOARD_EMPTY)
         return
