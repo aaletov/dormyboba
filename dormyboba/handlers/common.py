@@ -4,7 +4,7 @@ from vkbottle.bot import Message, BotLabeler
 import grpc
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
-from ..config import api, STUB_KEY
+from ..config import api, STUB_KEY, state_dispenser
 
 common_labeler = BotLabeler()
 
@@ -81,5 +81,9 @@ async def help(message: Message) -> None:
     )
     role_name = None if not(res.HasField("user")) else res.user.role.role_name
     users_info = await api.users.get(message.from_id)
+    
+    state = await state_dispenser.get(message.peer_id)
+    if state is not None:
+        await state_dispenser.delete(message.peer_id)
     await message.answer("Привет, {}".format(users_info[0].first_name),
                          keyboard=build_keyboard_start(role_name))

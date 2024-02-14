@@ -4,6 +4,7 @@ from datetime import datetime
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
 from google.protobuf.empty_pb2 import Empty
+from google.protobuf.timestamp_pb2 import Timestamp
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 from ..config import api, state_dispenser, STUB_KEY
@@ -76,15 +77,14 @@ async def pending_date(message: Message) -> None:
     try:
         at = datetime.strptime(message.text, '%Y-%m-%d')
     except ValueError as ve1:
-        print('ValueError 1:', ve1)
         await state_dispenser.set(message.peer_id, MailingState.PENDING_DATE)
         await message.answer("Задайте дату отправки в формате 2022-12-31", keyboard=KEYBOARD_EMPTY)
         return
-    
+
     at = cast(datetime, at)
     mailing: dict = CtxStorage().get(message.peer_id)
-    
-    if mailing["at"] is None:
+
+    if not("at" in mailing):
         mailing["at"] = at
     else:
         old_at: datetime = mailing["at"]
@@ -93,7 +93,7 @@ async def pending_date(message: Message) -> None:
             month=at.month,
             day=at.day
         )
-    
+
     await state_dispenser.delete(message.peer_id)
     await message.answer("Дата отправки сохранена", keyboard=KEYBOARD_MAILING)
 
@@ -112,11 +112,11 @@ async def pending_time(message: Message) -> None:
         await state_dispenser.set(message.peer_id, MailingState.PENDING_TIME)
         await message.answer("Задайте время отправки в формате 23:59:59", keyboard=KEYBOARD_EMPTY)
         return
-    
+
     at = cast(datetime, at)
     mailing: dict = CtxStorage().get(message.peer_id)
 
-    if mailing["at"] is None:
+    if not("at" in mailing):
         mailing["at"] = at
     else:
         old_at: datetime = mailing["at"]
@@ -152,11 +152,11 @@ async def mailing_filter_back(message: Message) -> None:
 @mailing_labeler.message(payload={"command": "mailing_filter_institute"})
 async def mailing_filter_institute(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetAllInstitutesResponse = await stub.GetAllInstitutes()
+    res: apiv1.GetAllInstitutesResponse = await stub.GetAllInstitutes(Empty())
     institute_names = [i.institute_name for i in res.institutes]
+    logging.debug(f"Got institute names {institute_names}")
     keyboard = Keyboard()
-    for i, row in enumerate(institute_names):
-        name = row[0]
+    for i, name in enumerate(institute_names):
         keyboard = keyboard.add(Text(name, payload={"command": "mailing_filter_institute_got"}))
         if i != (len(institute_names) - 1):
             keyboard = keyboard.row()
@@ -179,11 +179,10 @@ async def mailing_filter_institute_got(message: Message) -> None:
 @mailing_labeler.message(payload={"command": "mailing_filter_academic_type"})
 async def mailing_filter_academic_type(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
-    res: apiv1.GetAllAcademicTypesResponse = await stub.GetAllAcademicTypes()
+    res: apiv1.GetAllAcademicTypesResponse = await stub.GetAllAcademicTypes(Empty())
     type_names = [t.type_name for t in res.academic_types]
     keyboard = Keyboard()
-    for i, row in enumerate(type_names):
-        name = row[0]
+    for i, name in enumerate(type_names):
         keyboard = keyboard.add(Text(name, payload={"command": "mailing_filter_academic_type_got"}))
         if i != (len(type_names) - 1):
             keyboard = keyboard.row()
@@ -229,18 +228,26 @@ async def mailing_filter_course_got(message: Message) -> None:
         return
     else:
         mailing = CtxStorage().get(message.peer_id)
-        mailing.year = year
+        mailing["year"] = year
         await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_done"})
-async def mailing_time(message: Message) -> None:    
+async def mailing_done(message: Message) -> None:
     mailing: dict = CtxStorage().get(message.peer_id)
-    
+
     if not("mailing_text" in mailing):
         await message.answer("Не задан текст рассылки!", keyboard=KEYBOARD_MAILING)
         return
 
+    if "at" in mailing:
+        timestamp = Timestamp()
+        timestamp.FromDatetime(mailing["at"])
+        mailing["at"] = timestamp
+
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+
+    logging.debug(f"Sending CreateMailingRequest: {mailing}")
+
     await stub.CreateMailing(apiv1.CreateMailingRequest(
         mailing=apiv1.Mailing(**mailing),
     ))
