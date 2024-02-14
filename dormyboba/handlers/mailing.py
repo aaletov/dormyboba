@@ -228,7 +228,7 @@ async def mailing_filter_course_got(message: Message) -> None:
         return
     else:
         mailing = CtxStorage().get(message.peer_id)
-        mailing.year = year
+        mailing["year"] = year
         await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_done"})
