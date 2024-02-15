@@ -71,6 +71,11 @@ async def defect_description(message: Message) -> None:
 @defect_labeler.message(state=DefectState.PENDING_DESCRIPTION)
 async def defect_description(message: Message) -> None:
     defect: dict = CtxStorage().get(message.peer_id)
+    if len(message.text) > 512:
+        await message.answer(
+            "Слишком длинное описание! Максимальная длина сообщения - 512 символов",
+        )
+        return
     defect["description"] = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Описание успешно сохранено", keyboard=KEYBOARD_DEFECT)
