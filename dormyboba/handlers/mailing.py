@@ -131,8 +131,6 @@ KEYBOARD_FILTERS = (
     Keyboard()
     .add(Text("Выбрать институт", payload={"command": "mailing_filter_institute"}))
     .row()
-    .add(Text("Выбрать тип программы", payload={"command": "mailing_filter_academic_type"}))
-    .row()
     .add(Text("Выбрать курс", payload={"command": "mailing_filter_course"}))
     .row()
     .add(Text("Назад", payload={"command": "mailing_filter_back"}))
