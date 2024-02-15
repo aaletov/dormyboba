@@ -108,7 +108,7 @@ async def pending_close(message: Message) -> None:
                              keyboard=KEYBOARD_EMPTY)
         return
 
-    close = close(datetime, close)
+    close = cast(datetime, close)
     queue: dict = CtxStorage().get(message.peer_id)
     queue["close"] = close
 
