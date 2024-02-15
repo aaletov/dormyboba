@@ -68,10 +68,35 @@ KEYBOARD_REGISTER = (
 
 KEYBOARD_EMPTY = Keyboard().get_json()
 
-@common_labeler.message(command="help")
 @common_labeler.message(command="start")
-@common_labeler.message(payload={"command": "help"})
 @common_labeler.message(payload={"command": "start"})
+async def start(message: Message) -> None:
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    res: apiv1.GetUserByIdResponse = await stub.GetUserById(
+        apiv1.GetUserByIdRequest(
+            user_id=message.peer_id,
+        ),
+    )
+    role_name = None if not(res.HasField("user")) else res.user.role.role_name
+    users_info = await api.users.get(message.from_id)
+
+    state = await state_dispenser.get(message.peer_id)
+    if state is not None:
+        await state_dispenser.delete(message.peer_id)
+    await message.answer("Привет, {}".format(users_info[0].first_name),
+                         keyboard=build_keyboard_start(role_name))
+
+INFO = """
+    Привет, <username>!
+    Данный бот позволит вам:
+        - Получать рассылки от администрации
+        - Занимать место в очередях
+        - Напрямую сообщать администрации о проблемах в общежитии
+    Для перехода в главное меню отправь мне команду /start
+"""
+
+@common_labeler.message(command="help")
+@common_labeler.message(payload={"command": "help"})
 async def help(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     res: apiv1.GetUserByIdResponse = await stub.GetUserById(
@@ -81,9 +106,5 @@ async def help(message: Message) -> None:
     )
     role_name = None if not(res.HasField("user")) else res.user.role.role_name
     users_info = await api.users.get(message.from_id)
-    
-    state = await state_dispenser.get(message.peer_id)
-    if state is not None:
-        await state_dispenser.delete(message.peer_id)
-    await message.answer("Привет, {}".format(users_info[0].first_name),
+    await message.answer(INFO.replace("<username>", users_info[0].first_name),
                          keyboard=build_keyboard_start(role_name))

@@ -21,8 +21,6 @@ class MailingState(BaseStateGroup):
 
 KEYBOARD_MAILING = (
     Keyboard()
-    .add(Text("Задать тему рассылки", payload={"command": "mailing_theme"}))
-    .row()
     .add(Text("Задать сообщение", payload={"command": "mailing_text"}))
     .row()
     .add(Text("Задать дату рассылки", payload={"command": "mailing_date"}))
@@ -33,7 +31,7 @@ KEYBOARD_MAILING = (
     .row()
     .add(Text("Готово", payload={"command": "mailing_done"}))
     .row()
-    .add(Text("Назад", payload={"command": "help"}))
+    .add(Text("Назад", payload={"command": "start"}))
     .get_json()
 )
 
@@ -231,6 +229,12 @@ async def mailing_filter_course_got(message: Message) -> None:
         mailing["year"] = year
         await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
+KEYBOARD_MAILING_CONFIRM = (
+    Keyboard()
+    .add(Text("Подтвердить", payload={"command": "mailing_confirm"}))
+    .get_json()
+)
+
 @mailing_labeler.message(payload={"command": "mailing_done"})
 async def mailing_done(message: Message) -> None:
     mailing: dict = CtxStorage().get(message.peer_id)
@@ -239,11 +243,23 @@ async def mailing_done(message: Message) -> None:
         await message.answer("Не задан текст рассылки!", keyboard=KEYBOARD_MAILING)
         return
 
+    textat = "сейчас"
+
     if "at" in mailing:
+        dt: datetime = mailing["at"]
+        textat = "в" + " " + str(dt)
         timestamp = Timestamp()
-        timestamp.FromDatetime(mailing["at"])
+        timestamp.FromDatetime(dt)
         mailing["at"] = timestamp
 
+    await message.answer(
+        f"Рассылка будет отправлена {textat}. Текст рассылки: \n\n {mailing["mailing_text"]}",
+        keyboard=KEYBOARD_MAILING_CONFIRM,
+    )
+
+@mailing_labeler.message(payload={"command": "mailing_confirm"})
+async def mailing_confirm(message: Message) -> None:
+    mailing: dict = CtxStorage().get(message.peer_id)
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
 
     logging.debug(f"Sending CreateMailingRequest: {mailing}")
