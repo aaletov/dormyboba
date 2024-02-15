@@ -22,7 +22,7 @@ KEYBOARD_DEFECT = (
     .row()
     .add(Text("Готово", payload={"command": "defect_done"}))
     .row()
-    .add(Text("Назад", payload={"command": "help"}))
+    .add(Text("Назад", payload={"command": "start"}))
     .get_json()
 )
 
@@ -111,7 +111,7 @@ async def defect_done(message: Message) -> None:
             defect_id=defect_id,
         ),
     )
-    
+
     await message.answer(f"Проблема успешно создана. Номер проблемы - {defect_id}",
                          keyboard=KEYBOARD_START)
     await api.messages.send(
@@ -120,7 +120,7 @@ async def defect_done(message: Message) -> None:
         random_id=random_id(),
         keyboard=build_accept_keyboard(defect_id)
     )
-    
+
 def build_resolved_keyboard(defect_id: int) -> str:
     return (
         Keyboard(inline=True)

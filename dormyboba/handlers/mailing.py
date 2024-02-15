@@ -31,7 +31,7 @@ KEYBOARD_MAILING = (
     .row()
     .add(Text("Готово", payload={"command": "mailing_done"}))
     .row()
-    .add(Text("Назад", payload={"command": "help"}))
+    .add(Text("Назад", payload={"command": "start"}))
     .get_json()
 )
 

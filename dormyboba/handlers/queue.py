@@ -32,10 +32,10 @@ KEYBOARD_QUEUE = (
     .row()
     .add(Text("Готово", payload={"command": "queue_done"}))
     .row()
-    .add(Text("Назад", payload={"command": "help"}))
+    .add(Text("Назад", payload={"command": "start"}))
     .get_json()
 )
-    
+
 @queue_labeler.message(payload={"command": "queue"})
 async def queue(message: Message) -> None:
     CtxStorage().set(message.peer_id, {})
@@ -82,7 +82,7 @@ async def pending_open(message: Message) -> None:
         await message.answer("Задайте время открытия очереди в формате 23:59:59",
                              keyboard=KEYBOARD_EMPTY)
         return
-    
+
     open = cast(datetime, open)
     open = datetime.combine(datetime.now().date(), open.time())
     queue: dict = CtxStorage().get(message.peer_id)
@@ -107,7 +107,7 @@ async def pending_close(message: Message) -> None:
         await message.answer("Задайте время открытия очереди в формате 23:59:59",
                              keyboard=KEYBOARD_EMPTY)
         return
-    
+
     close = close(datetime, close)
     queue: dict = CtxStorage().get(message.peer_id)
     queue["close"] = close
@@ -181,7 +181,7 @@ async def queue_join(message: Message) -> None:
     else:
         await message.answer("Вы успешно добавлены в очередь!",
                             keyboard=build_leave_keyboard(queue_id))
-    
+
 @queue_labeler.message(payload_contains={"command": "queue_leave"})
 async def queue_leave(message: Message) -> None:
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
