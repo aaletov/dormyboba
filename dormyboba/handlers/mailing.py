@@ -1,6 +1,7 @@
 from typing import cast, Optional, Iterator, Generator, Sequence
 import logging
-from datetime import datetime
+import datetime
+import time
 import re
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
@@ -73,26 +74,17 @@ async def mailing_date(message: Message) -> None:
 
 @mailing_labeler.message(state=MailingState.PENDING_DATE)
 async def pending_date(message: Message) -> None:
-    at = None
+    send_date = None
     try:
-        at = datetime.strptime(message.text, '%Y-%m-%d')
+        send_date = datetime.datetime.strptime(message.text, '%Y-%m-%d')
     except ValueError as ve1:
         await state_dispenser.set(message.peer_id, MailingState.PENDING_DATE)
         await message.answer("Задайте дату отправки в формате 2022-12-31", keyboard=KEYBOARD_EMPTY)
         return
 
-    at = cast(datetime, at)
+    send_date = cast(datetime.datetime, send_date)
     mailing: dict = CtxStorage().get(message.peer_id)
-
-    if not("at" in mailing):
-        mailing["at"] = at
-    else:
-        old_at: datetime = mailing["at"]
-        mailing["at"] = old_at.replace(
-            year=at.year,
-            month=at.month,
-            day=at.day
-        )
+    mailing["send_date"] = send_date
 
     await state_dispenser.delete(message.peer_id)
     await message.answer("Дата отправки сохранена", keyboard=KEYBOARD_MAILING)
@@ -104,27 +96,18 @@ async def mailing_time(message: Message) -> None:
 
 @mailing_labeler.message(state=MailingState.PENDING_TIME)
 async def pending_time(message: Message) -> None:
-    at = None
+    send_time = None
     try:
-        at = datetime.strptime(message.text, '%H:%M:%S')
+        send_time = time.strptime(message.text, '%H:%M:%S')
     except ValueError as ve1:
         print('ValueError 1:', ve1)
         await state_dispenser.set(message.peer_id, MailingState.PENDING_TIME)
         await message.answer("Задайте время отправки в формате 23:59:59", keyboard=KEYBOARD_EMPTY)
         return
 
-    at = cast(datetime, at)
+    send_time = cast(time.struct_time, send_time)
     mailing: dict = CtxStorage().get(message.peer_id)
-
-    if not("at" in mailing):
-        mailing["at"] = at
-    else:
-        old_at: datetime = mailing["at"]
-        mailing["at"] = old_at.replace(
-            hour=at.hour,
-            minute=at.minute,
-            second=at.second,
-        )
+    mailing["send_time"] = send_time
 
     await state_dispenser.delete(message.peer_id)
     await message.answer("Время отправки сохранено", keyboard=KEYBOARD_MAILING)
@@ -222,7 +205,7 @@ async def mailing_filter_course(message: Message) -> None:
 @mailing_labeler.message(payload={"command": "mailing_filter_course_got"})
 async def mailing_filter_course_got(message: Message) -> None:
     try:
-        year = (datetime.now().year % 10) - int(message.text)
+        year = (datetime.datetime.now().year % 10) - int(message.text)
     except ValueError:
         await message.answer("Выберите курс", keyboard=KEYBOARD_COURSE)
         return
@@ -274,10 +257,25 @@ async def mailing_done(message: Message) -> None:
 
     textat = "сейчас"
 
-    if "at" in mailing:
-        dt: datetime = mailing["at"]
+    if ("send_date" in mailing) and not("send_time" in mailing):
+        await message.answer("Дата рассылки указана без времени рассылки!",
+                             keyboard=KEYBOARD_MAILING)
+        return
 
-        if dt < datetime.now():
+    if ("send_time" in mailing) and not("send_date" in mailing):
+        mailing["send_date"] = datetime.datetime.now()
+
+    if ("send_time" in mailing) and ("send_date" in mailing):
+        send_time: time.struct_time = mailing["send_time"]
+
+        send_date: datetime.datetime = mailing["send_date"]
+        dt = send_date.replace(
+            hour=send_time.tm_hour,
+            minute=send_time.tm_min,
+            second=send_time.tm_sec,
+        )
+
+        if dt < datetime.datetime.now():
             await message.answer("Дата и время рассылки меньше текущего времени!",
                                  keyboard=KEYBOARD_MAILING)
             return
@@ -296,6 +294,11 @@ async def mailing_done(message: Message) -> None:
 async def mailing_confirm(message: Message) -> None:
     mailing: dict = CtxStorage().get(message.peer_id)
     stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+
+    if "send_time" in mailing:
+        mailing.pop("send_time")
+    if "send_date" in mailing:
+        mailing.pop("send_date")
 
     logging.debug(f"Sending CreateMailingRequest: {mailing}")
 
