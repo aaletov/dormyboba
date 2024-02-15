@@ -7,21 +7,19 @@ skinparam defaultFontName Open Sans
 Person(studentA, "Student A", "A student")
 Person(councilMemA, "CouncilMem A", "A student council member")
 
-Container(registerPage, "Register Webpage", "html", "Static html page with login options")
 Container(vkBot, "Vk Bot", "", "Vk bot interface")
 
 System_Boundary(backend, "Backend") {
-  Container(apiService, "API Service", "Python", "MVP for handling non-VK actions (e.g. serve allowMessages widget)")
-  Container(vkBotService, "Vk Bot Service", "Python", "Handles Vk updates and performs logic")
+  Container(vkBotService, "Vk Bot Service", "Python", "Handles Vk updates, collects composite objects")
+  Container(dormybobaCore, "Core service", "Python", "Incapsulates business-logic, implements grpc API")
   ContainerDb(db, "Database", "PostgreSQL", "Stores user and group info")
 }
 
-Rel_D(studentA, registerPage, "Performs registration")
-Rel_D(councilMemA, vkBot, "Initiates registration")
+Rel_D(studentA, vkBot, "Performs registration, creates defects, gets mailings")
+Rel_D(councilMemA, vkBot, "Generates verification codes, creates mailings, etc.")
 
-Rel_D(apiService, db, "")
-Rel_D(registerPage, apiService, "Sends user info")
+Rel_R(vkBotService, dormybobaCore, "Sends composite object to grpc API")
+Rel_D(dormybobaCore, db, "CRUD")
 Rel_D(vkBot, vkBotService, "Sends Vk updates")
 
-Rel_D(vkBotService, db, "CRUD")
 @enduml
