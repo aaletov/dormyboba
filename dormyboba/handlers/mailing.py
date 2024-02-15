@@ -247,6 +247,12 @@ async def mailing_done(message: Message) -> None:
 
     if "at" in mailing:
         dt: datetime = mailing["at"]
+
+        if dt < datetime.now():
+            await message.answer("Дата и время рассылки меньше текущего времени!",
+                                 keyboard=KEYBOARD_MAILING)
+            return
+
         textat = "в" + " " + str(dt)
         timestamp = Timestamp()
         timestamp.FromDatetime(dt)
