@@ -1,6 +1,7 @@
 from typing import cast, Optional, Iterator, Generator, Sequence
 import logging
 from datetime import datetime
+import re
 from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
 from vkbottle.bot import Message, BotLabeler
 from google.protobuf.empty_pb2 import Empty
@@ -18,6 +19,7 @@ class MailingState(BaseStateGroup):
     PENDING_TEXT = "pending_text"
     PENDING_DATE = "pending_date"
     PENDING_TIME = "pending_time"
+    PENDING_GROUP = "pending_group"
 
 KEYBOARD_MAILING = (
     Keyboard()
@@ -133,6 +135,8 @@ KEYBOARD_FILTERS = (
     .row()
     .add(Text("Выбрать курс", payload={"command": "mailing_filter_course"}))
     .row()
+    .add(Text("Выбрать группу", payload={"command": "mailing_filter_group"}))
+    .row()
     .add(Text("Назад", payload={"command": "mailing_filter_back"}))
     .get_json()
 )
@@ -226,6 +230,31 @@ async def mailing_filter_course_got(message: Message) -> None:
         mailing = CtxStorage().get(message.peer_id)
         mailing["year"] = year
         await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
+
+@mailing_labeler.message(payload={"command": "mailing_filter_group"})
+async def mailing_filter_group(message: Message) -> None:
+    await state_dispenser.set(message.peer_id, MailingState.PENDING_GROUP)
+    await message.answer("Введите целевую академическую группу", keyboard=KEYBOARD_EMPTY)
+
+@mailing_labeler.message(state=MailingState.PENDING_GROUP)
+async def pending_group(message: Message) -> None:
+    match = re.fullmatch(r'(\d{2})(\d{1})(\d{2})(\d{2})/(\d{1})(\d{2})(\d{2})', message.text)
+    if match is None:
+        await state_dispenser.set(message.peer_id, MailingState.PENDING_GROUP)
+        await message.answer("Введите целевую академическую группу")
+        return
+
+    mailing: dict = CtxStorage().get(message.peer_id)
+    if "institute_id" in mailing:
+        mailing.pop("institute_id")
+    if "academic_type_id" in mailing:
+        mailing.pop("academic_type_id")
+    if "year" in mailing:
+        mailing.pop("year")
+    mailing["group"] = message.text
+
+    await state_dispenser.delete(message.peer_id)
+    await message.answer("Целевая группа сохранена", keyboard=KEYBOARD_MAILING)
 
 KEYBOARD_MAILING_CONFIRM = (
     Keyboard()
