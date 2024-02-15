@@ -232,6 +232,8 @@ async def mailing_filter_course_got(message: Message) -> None:
 KEYBOARD_MAILING_CONFIRM = (
     Keyboard()
     .add(Text("Подтвердить", payload={"command": "mailing_confirm"}))
+    .row()
+    .add(Text("Вернуться к редактированию", payload={"command": "mailing_filter_back"}))
     .get_json()
 )
 
