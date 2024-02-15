@@ -154,7 +154,7 @@ async def pending_group(message: Message) -> None:
             type_name=None,
         ),
         year=int(groups[4]),
-        group="".join(groups[4:7]),
+        group="".join(message.text),
     )
     verification_code = user_dict["verification_code"]
 
