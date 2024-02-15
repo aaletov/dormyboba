@@ -189,7 +189,7 @@ protobuf = "^4.25.2"
 type = "git"
 url = "https://github.com/aaletov/dormyboba-api.git"
 reference = "main"
-resolved_reference = "311dd548ba1129fabf742cb968c2e1d5707a5514"
+resolved_reference = "c051f36df3c17f3b210d696a06c9ebc3b6b75645"
 subdirectory = "api/generated/python"
 
 [[package]]

@@ -37,7 +37,7 @@ def build_keyboard_invite(user_role: str) -> str:
         if row_complete:
             keyboard = keyboard.row()
             row_complete = False
-        keyboard = keyboard.add(Text("Назад", payload={"command": "start"}))      
+        keyboard = keyboard.add(Text("Назад", payload={"command": "start"}))
 
     return keyboard.get_json()
 
@@ -97,7 +97,7 @@ async def pending_code(message: Message) -> None:
                 verification_code=int(code),
             ),
         )
-        
+
         if not(res.HasField("role")):
             raise ValueError("Некорректный проверочный код")
 
@@ -107,7 +107,7 @@ async def pending_code(message: Message) -> None:
     except ValueError as exc:
         await state_dispenser.set(message.peer_id, RegisterState.PENDING_GROUP)
         await message.answer("Введите проверочный код повторно")
-        return    
+        return
 
     await state_dispenser.set(message.peer_id, RegisterState.PENDING_NAME)
     await message.answer("Введите своё имя", keyboard=KEYBOARD_EMPTY)
@@ -135,7 +135,7 @@ async def pending_group(message: Message) -> None:
         await state_dispenser.set(message.peer_id, RegisterState.PENDING_GROUP)
         await message.answer("Введите свою группу")
         return
-    
+
     groups = match.groups()
     user_dict: dict = CtxStorage().get(message.peer_id)
 
@@ -154,7 +154,7 @@ async def pending_group(message: Message) -> None:
             type_name=None,
         ),
         year=int(groups[4]),
-        group="".join(groups[4:7]),
+        group="".join(message.text),
     )
     verification_code = user_dict["verification_code"]
 
