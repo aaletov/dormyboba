@@ -2,11 +2,15 @@ version: "3.1"
 
 services:
   dormyboba:
-    image: "dormyboba:1707849633"
+    image: "dormyboba:latest"
+    depends_on:
+      dormyboba_core:
+        condition: service_started
   dormyboba_core:
-    image: "dormyboba-core:1707849025"
+    image: "dormyboba-core:latest"
     ports:
       - "50051:50051"
+      - "8000:8000"
   postgresql:
     image: "postgres:15.5-alpine3.18"
     ports:
