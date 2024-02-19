@@ -1,14 +1,18 @@
 from urllib.parse import urlencode
 import re
-import random
-from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
-from vkbottle.bot import Message, BotLabeler
+from vkbottle import Keyboard, Text, BaseStateGroup
+from vkbottle.bot import Message
 import dormyboba_api.v1api_pb2 as apiv1
-import dormyboba_api.v1api_pb2_grpc as apiv1grpc
-from ..config import api, state_dispenser, STUB_KEY, CONFIG
 from .common import KEYBOARD_START, KEYBOARD_EMPTY, build_keyboard_start
 
-invite_labeler = BotLabeler()
+from .injection import (
+    invite_labeler,
+    stub,
+    api,
+    state_dispenser,
+    config,
+    ctx_storage,
+)
 
 class RegisterState(BaseStateGroup):
     PENDING_NAME = "pending_name"
@@ -42,7 +46,6 @@ def build_keyboard_invite(user_role: str) -> str:
 
 @invite_labeler.message(payload={"command": "invite"})
 async def invite(message: Message) -> None:
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     res: apiv1.GetUserByIdResponse = await stub.GetUserById(
         apiv1.GetUserByIdRequest(
             user_id=message.peer_id,
@@ -52,14 +55,14 @@ async def invite(message: Message) -> None:
                          keyboard=build_keyboard_invite(res.user.role.role_name))
 
 async def generate_invite_link(role_name: str) -> str:
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     res: apiv1.GenerateTokenResponse = await stub.GenerateToken(
         apiv1.GenerateTokenRequest(
             role_name=role_name,
         ),
     )
     params = {"token": res.token}
-    return f"http://{CONFIG.addr}/invite/widget?" + urlencode(params)
+    addr = config["dormyboba"]["addr"]
+    return f"http://{addr}/invite/widget?" + urlencode(params)
 
 @invite_labeler.message(payload={"command": "inviteAdmin"})
 async def invite_admin(message: Message) -> None:
@@ -79,7 +82,7 @@ async def invite_client(message: Message) -> None:
 @invite_labeler.message(payload={"command": "register"})
 async def register(message: Message) -> None:
     await state_dispenser.set(message.peer_id, RegisterState.PENDING_NAME)
-    CtxStorage().set(message.peer_id, {})
+    ctx_storage.set(message.peer_id, {})
     await message.answer("Введите своё имя", keyboard=KEYBOARD_EMPTY)
 
 @invite_labeler.message(state=RegisterState.PENDING_NAME)
@@ -106,9 +109,8 @@ async def pending_group(message: Message) -> None:
         return
 
     groups = match.groups()
-    user_dict: dict = CtxStorage().get(message.peer_id)
+    user_dict: dict = ctx_storage.get(message.peer_id)
 
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     res: apiv1.GetUserByIdResponse = await stub.GetUserById(apiv1.GetUserByIdRequest(
         user_id=message.peer_id,
     ))

@@ -9,3 +9,9 @@ Multidict requires gcc-11 to compile. Use `MULTIDICT_NO_EXTENSIONS` to use raw p
 export MULTIDICT_NO_EXTENSIONS=1
 poetry install
 ```
+
+### Coverage:
+
+```bash
+poetry run pytest --cov=dormyboba --cov-report term-missing
+```
