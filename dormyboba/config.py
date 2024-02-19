@@ -1,20 +1,34 @@
+from typing import Any
+from dataclasses import dataclass
+import os
 import yaml
 from pathlib import Path
 from vkbottle import API, BuiltinStateDispenser
 from vkbottle.bot import BotLabeler
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-CONFIG_PATH = Path("/").resolve() / "config"
+@dataclass
+class DormybobaConfig:
+    addr: str
+    core_addr: str
+    vk_token: str
 
-config = None
-with open(CONFIG_PATH / "config.yaml", "r") as yamlfile:
-    config = yaml.load(yamlfile, Loader=yaml.FullLoader)["dormyboba"]
+    @staticmethod
+    def parse(yaml_config: Any) -> 'DormybobaConfig':
+        return DormybobaConfig(
+            addr=yaml_config["addr"],
+            core_addr=yaml_config["core_addr"],
+            vk_token=yaml_config["vk_token"],
+        )
 
-DOMAIN = config["domain"]
-VK_TOKEN = config["vk_token"]
-GROUP_ID = config["group_id"]
+def parse_config(path: str | Path) -> DormybobaConfig:
+    with open(path, "r") as yamlfile:
+        yaml_config = yaml.load(yamlfile, Loader=yaml.FullLoader)["dormyboba"]
+        return DormybobaConfig.parse(yaml_config)
 
-api = API(VK_TOKEN)
+CONFIG_DIR = Path(os.getenv("CONFIG_DIR", "./config")).resolve()
+CONFIG = parse_config(CONFIG_DIR / "config.yaml")
+
+api = API(CONFIG.vk_token)
 labeler = BotLabeler()
 state_dispenser = BuiltinStateDispenser()
 

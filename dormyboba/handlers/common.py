@@ -1,9 +1,12 @@
 from typing import Optional
-from vkbottle import Keyboard, Text, CtxStorage
+import asyncio
+from vkbottle import Keyboard, Text, CtxStorage, GroupEventType
 from vkbottle.bot import Message, BotLabeler
+from vkbottle_types.events import MessageAllow
 import grpc
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
+from .random import random_id
 from ..config import api, STUB_KEY, state_dispenser
 
 common_labeler = BotLabeler()
@@ -11,14 +14,8 @@ common_labeler = BotLabeler()
 def build_keyboard_start(user_role: Optional[str]) -> str:
     keyboard = Keyboard()
     row_complete = False
-    if user_role in (None, "admin", "council_member", "student"):
+    if user_role in ("admin", "council_member", "student"):
         keyboard = keyboard.add(Text("Информация о боте", payload={"command": "help"}))
-        row_complete = True
-    if user_role is None:
-        if row_complete:
-            keyboard = keyboard.row()
-            row_complete = False
-        keyboard = keyboard.add(Text("Зарегистрироваться", payload={"command": "register"}))
         row_complete = True
     if user_role in ("admin", "council_member"):
         if row_complete:
@@ -104,7 +101,33 @@ async def help(message: Message) -> None:
             user_id=message.peer_id,
         ),
     )
+
+    if not(res.HasField("user")):
+        await message.answer(
+            message="Вы не зарегистрированы! Для регистрации обратитесь к администратору"
+        )
+        return
+
     role_name = None if not(res.HasField("user")) else res.user.role.role_name
     users_info = await api.users.get(message.from_id)
     await message.answer(INFO.replace("<username>", users_info[0].first_name),
                          keyboard=build_keyboard_start(role_name))
+
+@common_labeler.raw_event(GroupEventType.MESSAGE_ALLOW, dataclass=MessageAllow)
+async def message_allow(event: MessageAllow) -> None:
+    await asyncio.sleep(5)
+    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+    res: apiv1.GetUserByIdResponse = await stub.GetUserById(apiv1.GetUserByIdRequest(
+        user_id=event.object.user_id,
+    ))
+
+    if res.user.is_registered:
+        return
+
+    if not(res.HasField("user")):
+        raise RuntimeError("User not found in database")
+
+    await api.messages.send(message="Добро пожаловать!",
+                                user_ids=[event.object.user_id],
+                                random_id=random_id(),
+                                keyboard=KEYBOARD_REGISTER)

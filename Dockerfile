@@ -8,5 +8,6 @@ WORKDIR /app
 COPY --from=builder /usr/src/dormyboba/dist ./
 COPY config /config
 RUN export WHL=$(ls *.whl) && pip install ./${WHL}
-EXPOSE 50051 
+EXPOSE 50051
+ENV CONFIG_DIR "/config"
 CMD ["python3", "-m", "dormyboba"]
