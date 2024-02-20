@@ -1,17 +1,15 @@
 from typing import Optional
+from dependency_injector.wiring import inject, Provide
 import asyncio
-from vkbottle import Keyboard, Text, GroupEventType
+from vkbottle import Keyboard, Text, GroupEventType, BuiltinStateDispenser, API
 from vkbottle.bot import Message
 from vkbottle_types.events import MessageAllow
 import dormyboba_api.v1api_pb2 as apiv1
+import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 from .random import random_id
+from ..container import Container
 
-from .injection import (
-    common_labeler,
-    stub,
-    api,
-    state_dispenser
-)
+from .injection import common_labeler
 
 def build_keyboard_start(user_role: Optional[str]) -> str:
     keyboard = Keyboard()
@@ -69,7 +67,13 @@ KEYBOARD_EMPTY = Keyboard().get_json()
 
 @common_labeler.message(command="start")
 @common_labeler.message(payload={"command": "start"})
-async def start(message: Message) -> None:
+@inject
+async def start(
+    message: Message,
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+    api: API = Provide[Container.api],
+) -> None:
     res: apiv1.GetUserByIdResponse = await stub.GetUserById(
         apiv1.GetUserByIdRequest(
             user_id=message.peer_id,
@@ -95,7 +99,12 @@ INFO = """
 
 @common_labeler.message(command="help")
 @common_labeler.message(payload={"command": "help"})
-async def help(message: Message) -> None:
+@inject
+async def help(
+    message: Message,
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+    api: API = Provide[Container.api],
+) -> None:
     res: apiv1.GetUserByIdResponse = await stub.GetUserById(
         apiv1.GetUserByIdRequest(
             user_id=message.peer_id,
@@ -114,7 +123,12 @@ async def help(message: Message) -> None:
                         keyboard=build_keyboard_start(role_name))
 
 @common_labeler.raw_event(GroupEventType.MESSAGE_ALLOW, dataclass=MessageAllow)
-async def message_allow(event: MessageAllow) -> None:
+@inject
+async def message_allow(
+    event: MessageAllow,
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+    api: API = Provide[Container.api],
+) -> None:
     await asyncio.sleep(5)
     res: apiv1.GetUserByIdResponse = await stub.GetUserById(apiv1.GetUserByIdRequest(
         user_id=event.object.user_id,

@@ -1,23 +1,20 @@
 from typing import cast
+from dependency_injector.wiring import inject, Provide
 import logging
 import datetime
 import time
 import re
-from vkbottle import Keyboard, Text, BaseStateGroup
+from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage, BuiltinStateDispenser, API
 from vkbottle.bot import Message
 from google.protobuf.empty_pb2 import Empty
 from google.protobuf.timestamp_pb2 import Timestamp
 import dormyboba_api.v1api_pb2 as apiv1
+import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 from .common import KEYBOARD_START, KEYBOARD_EMPTY
 from .random import random_id
+from ..container import Container
 
-from .injection import (
-    mailing_labeler,
-    stub,
-    api,
-    state_dispenser,
-    ctx_storage,
-)
+from .injection import mailing_labeler
 
 class MailingState(BaseStateGroup):
     PENDING_THEME = "pending_theme"
@@ -43,41 +40,72 @@ KEYBOARD_MAILING = (
 )
 
 @mailing_labeler.message(payload={"command": "mailing"})
-async def mailing(message: Message) -> None:
+@inject
+async def mailing(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
     ctx_storage.set(message.peer_id, {})
     await message.answer("Начат процесс создания рассылки", keyboard=KEYBOARD_MAILING)
 
 @mailing_labeler.message(payload={"command": "mailing_theme"})
-async def mailing_theme(message: Message) -> None:
+@inject
+async def mailing_theme(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+) -> None:
     await state_dispenser.set(message.peer_id, MailingState.PENDING_THEME)
     await message.answer("Задайте тему сообщения", keyboard=KEYBOARD_EMPTY)
 
 @mailing_labeler.message(state=MailingState.PENDING_THEME)
-async def pending_theme(message: Message) -> None:
+@inject
+async def pending_theme(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
     mailing: dict = ctx_storage.get(message.peer_id)
     mailing["theme"] = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Тема сообщения сохранена", keyboard=KEYBOARD_MAILING)
 
 @mailing_labeler.message(payload={"command": "mailing_text"})
-async def mailing_text(message: Message) -> None:
+@inject
+async def mailing_text(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+) -> None:
     await state_dispenser.set(message.peer_id, MailingState.PENDING_TEXT)
     await message.answer("Задайте текст сообщения", keyboard=KEYBOARD_EMPTY)
 
 @mailing_labeler.message(state=MailingState.PENDING_TEXT)
-async def pending_text(message: Message) -> None:
+@inject
+async def pending_text(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
     mailing: dict = ctx_storage.get(message.peer_id)
     mailing["mailing_text"] = message.text
     await state_dispenser.delete(message.peer_id)
     await message.answer("Текст сообщения сохранен", keyboard=KEYBOARD_MAILING)
 
 @mailing_labeler.message(payload={"command": "mailing_date"})
-async def mailing_date(message: Message) -> None:
+@inject
+async def mailing_date(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+) -> None:
     await state_dispenser.set(message.peer_id, MailingState.PENDING_DATE)
     await message.answer("Задайте дату отправки в формате 2022-12-31", keyboard=KEYBOARD_EMPTY)
 
 @mailing_labeler.message(state=MailingState.PENDING_DATE)
-async def pending_date(message: Message) -> None:
+@inject
+async def pending_date(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
     send_date = None
     try:
         send_date = datetime.datetime.strptime(message.text, '%Y-%m-%d')
@@ -94,12 +122,21 @@ async def pending_date(message: Message) -> None:
     await message.answer("Дата отправки сохранена", keyboard=KEYBOARD_MAILING)
 
 @mailing_labeler.message(payload={"command": "mailing_time"})
-async def mailing_time(message: Message) -> None:
+@inject
+async def mailing_time(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+) -> None:
     await state_dispenser.set(message.peer_id, MailingState.PENDING_TIME)
     await message.answer("Задайте время отправки в формате 23:59:59", keyboard=KEYBOARD_EMPTY)
 
 @mailing_labeler.message(state=MailingState.PENDING_TIME)
-async def pending_time(message: Message) -> None:
+@inject
+async def pending_time(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
     send_time = None
     try:
         send_time = time.strptime(message.text, '%H:%M:%S')
@@ -137,7 +174,11 @@ async def mailing_filter_back(message: Message) -> None:
     await message.answer("Выберите параметры рассылки", keyboard=KEYBOARD_MAILING)
 
 @mailing_labeler.message(payload={"command": "mailing_filter_institute"})
-async def mailing_filter_institute(message: Message) -> None:
+@inject
+async def mailing_filter_institute(
+    message: Message,
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+) -> None:
     res: apiv1.GetAllInstitutesResponse = await stub.GetAllInstitutes(Empty())
     institute_names = [i.institute_name for i in res.institutes]
     logging.debug(f"Got institute names {institute_names}")
@@ -150,7 +191,12 @@ async def mailing_filter_institute(message: Message) -> None:
     await message.answer("Выберите институт", keyboard=keyboard.get_json())
 
 @mailing_labeler.message(payload={"command": "mailing_filter_institute_got"})
-async def mailing_filter_institute_got(message: Message) -> None:
+@inject
+async def mailing_filter_institute_got(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+) -> None:
     res: apiv1.GetInstituteByNameResponse = await stub.GetInstituteByName(
         apiv1.GetInstituteByNameRequest(
             institute_name=message.text,
@@ -162,7 +208,12 @@ async def mailing_filter_institute_got(message: Message) -> None:
     await message.answer("Институт сохранён", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_filter_academic_type"})
-async def mailing_filter_academic_type(message: Message) -> None:
+@inject
+async def mailing_filter_academic_type(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+) -> None:
     res: apiv1.GetAllAcademicTypesResponse = await stub.GetAllAcademicTypes(Empty())
     type_names = [t.type_name for t in res.academic_types]
     keyboard = Keyboard()
@@ -174,7 +225,12 @@ async def mailing_filter_academic_type(message: Message) -> None:
     await message.answer("Выберите тип образовательной программы", keyboard=keyboard.get_json())
 
 @mailing_labeler.message(payload={"command": "mailing_filter_academic_type_got"})
-async def mailing_filter_academic_type_got(message: Message) -> None:
+@inject
+async def mailing_filter_academic_type_got(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+) -> None:
     res: apiv1.GetAcademicTypeByNameResponse = await stub.GetAcademicTypeByName(
         apiv1.GetAcademicTypeByNameRequest(
             type_name=message.text,
@@ -203,7 +259,11 @@ async def mailing_filter_course(message: Message) -> None:
     await message.answer("Выберите курс", keyboard=KEYBOARD_COURSE)
 
 @mailing_labeler.message(payload={"command": "mailing_filter_course_got"})
-async def mailing_filter_course_got(message: Message) -> None:
+@inject
+async def mailing_filter_course_got(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
     try:
         year = (datetime.datetime.now().year % 10) - int(message.text)
     except ValueError:
@@ -215,12 +275,21 @@ async def mailing_filter_course_got(message: Message) -> None:
         await message.answer("Сохранено", keyboard=KEYBOARD_FILTERS)
 
 @mailing_labeler.message(payload={"command": "mailing_filter_group"})
-async def mailing_filter_group(message: Message) -> None:
+@inject
+async def mailing_filter_group(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+) -> None:
     await state_dispenser.set(message.peer_id, MailingState.PENDING_GROUP)
     await message.answer("Введите целевую академическую группу", keyboard=KEYBOARD_EMPTY)
 
 @mailing_labeler.message(state=MailingState.PENDING_GROUP)
-async def pending_group(message: Message) -> None:
+@inject
+async def pending_group(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+) -> None:
     match = re.fullmatch(r'(\d{2})(\d{1})(\d{2})(\d{2})/(\d{1})(\d{2})(\d{2})', message.text)
     if match is None:
         await state_dispenser.set(message.peer_id, MailingState.PENDING_GROUP)
@@ -248,7 +317,11 @@ KEYBOARD_MAILING_CONFIRM = (
 )
 
 @mailing_labeler.message(payload={"command": "mailing_done"})
-async def mailing_done(message: Message) -> None:
+@inject
+async def mailing_done(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
     mailing: dict = ctx_storage.get(message.peer_id)
 
     if not("mailing_text" in mailing):
@@ -292,7 +365,12 @@ async def mailing_done(message: Message) -> None:
     )
 
 @mailing_labeler.message(payload={"command": "mailing_confirm"})
-async def mailing_confirm(message: Message) -> None:
+@inject
+async def mailing_confirm(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+) -> None:
     mailing: dict = ctx_storage.get(message.peer_id)
 
     if "send_time" in mailing:
@@ -308,7 +386,11 @@ async def mailing_confirm(message: Message) -> None:
 
     await message.answer("Рассылка успешно создана!", keyboard=KEYBOARD_START)
 
-async def mailing_task() -> None:
+@inject
+async def mailing_task(
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+    api: API = Provide[Container.api],
+) -> None:
     logging.info("Executing mailing task...")
 
     async for response in stub.MailingEvent(Empty()):

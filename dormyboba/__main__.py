@@ -1,6 +1,8 @@
-from vkbottle import Bot
+from vkbottle import Bot, CtxStorage
 from vkbottle.bot import BotLabeler
 from .container import Container
+
+CtxStorage() # Костыль, который фиксит инициализацию CtxStorage
 
 container = Container()
 container.wire(
@@ -8,13 +10,19 @@ container.wire(
         "dormyboba.handlers.injection",
     ],
 )
+container.wire(
+    modules=[
+        "dormyboba.handlers.common",
+        "dormyboba.handlers.invite",
+        "dormyboba.handlers.mailing",
+        "dormyboba.handlers.queue",
+        "dormyboba.handlers.defect",
+    ],
+)
 
 from .handlers import (
-    common,
-    invite,
     mailing,
     queue,
-    defect,
 )
 
 labelers = (
