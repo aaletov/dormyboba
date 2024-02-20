@@ -1,14 +1,14 @@
+from dependency_injector.wiring import inject, Provide
 from urllib.parse import urlencode
 import re
-import random
-from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
-from vkbottle.bot import Message, BotLabeler
+from vkbottle import Keyboard, Text, BaseStateGroup, BuiltinStateDispenser, CtxStorage
+from vkbottle.bot import Message
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
-from ..config import api, state_dispenser, STUB_KEY, CONFIG
+from ..container import Container
 from .common import KEYBOARD_START, KEYBOARD_EMPTY, build_keyboard_start
 
-invite_labeler = BotLabeler()
+from .injection import invite_labeler
 
 class RegisterState(BaseStateGroup):
     PENDING_NAME = "pending_name"
@@ -41,8 +41,11 @@ def build_keyboard_invite(user_role: str) -> str:
     return keyboard.get_json()
 
 @invite_labeler.message(payload={"command": "invite"})
-async def invite(message: Message) -> None:
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+@inject
+async def invite(
+    message: Message,
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub]
+) -> None:
     res: apiv1.GetUserByIdResponse = await stub.GetUserById(
         apiv1.GetUserByIdRequest(
             user_id=message.peer_id,
@@ -51,15 +54,20 @@ async def invite(message: Message) -> None:
     await message.answer("Выберите роль нового пользователя",
                          keyboard=build_keyboard_invite(res.user.role.role_name))
 
-async def generate_invite_link(role_name: str) -> str:
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
+@inject
+async def generate_invite_link(
+    role_name: str,
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+    config = Provide[Container.config]
+) -> str:
     res: apiv1.GenerateTokenResponse = await stub.GenerateToken(
         apiv1.GenerateTokenRequest(
             role_name=role_name,
         ),
     )
     params = {"token": res.token}
-    return f"http://{CONFIG.addr}/invite/widget?" + urlencode(params)
+    addr = config["dormyboba"]["addr"]
+    return f"http://{addr}/invite/widget?" + urlencode(params)
 
 @invite_labeler.message(payload={"command": "inviteAdmin"})
 async def invite_admin(message: Message) -> None:
@@ -77,13 +85,22 @@ async def invite_client(message: Message) -> None:
     await message.answer(invite_link, keyboard=KEYBOARD_START)
 
 @invite_labeler.message(payload={"command": "register"})
-async def register(message: Message) -> None:
+@inject
+async def register(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
     await state_dispenser.set(message.peer_id, RegisterState.PENDING_NAME)
-    CtxStorage().set(message.peer_id, {})
+    ctx_storage.set(message.peer_id, {})
     await message.answer("Введите своё имя", keyboard=KEYBOARD_EMPTY)
 
 @invite_labeler.message(state=RegisterState.PENDING_NAME)
-async def pending_name(message: Message) -> None:
+@inject
+async def pending_name(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+) -> None:
     match = re.fullmatch(r'(?u)\w+', message.text)
     if match is None:
         await state_dispenser.set(message.peer_id, RegisterState.PENDING_NAME)
@@ -97,7 +114,13 @@ async def pending_name(message: Message) -> None:
     await message.answer("Введите свою группу")
 
 @invite_labeler.message(state=RegisterState.PENDING_GROUP)
-async def pending_group(message: Message) -> None:
+@inject
+async def pending_group(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+) -> None:
     # 51 3 09 04 / 00 1 04
     match = re.fullmatch(r'(\d{2})(\d{1})(\d{2})(\d{2})/(\d{1})(\d{2})(\d{2})', message.text)
     if match is None:
@@ -106,9 +129,8 @@ async def pending_group(message: Message) -> None:
         return
 
     groups = match.groups()
-    user_dict: dict = CtxStorage().get(message.peer_id)
+    user_dict: dict = ctx_storage.get(message.peer_id)
 
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     res: apiv1.GetUserByIdResponse = await stub.GetUserById(apiv1.GetUserByIdRequest(
         user_id=message.peer_id,
     ))

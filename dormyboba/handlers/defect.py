@@ -1,14 +1,14 @@
-from typing import List
+from dependency_injector.wiring import inject, Provide
 import asyncio
-from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage
-from vkbottle.bot import Message, BotLabeler
+from vkbottle import Keyboard, Text, BaseStateGroup, CtxStorage, BuiltinStateDispenser, API
+from vkbottle.bot import Message
 import dormyboba_api.v1api_pb2 as apiv1
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
-from ..config import api, state_dispenser, STUB_KEY
 from .common import KEYBOARD_START, KEYBOARD_EMPTY
 from .random import random_id
+from ..container import Container
 
-defect_labeler = BotLabeler()
+from .injection import defect_labeler
 
 class DefectState(BaseStateGroup):
     PENDING_DESCRIPTION = "pending_description"
@@ -27,8 +27,12 @@ KEYBOARD_DEFECT = (
 )
 
 @defect_labeler.message(payload={"command": "defect"})
-async def defect(message: Message) -> None:
-    CtxStorage().set(message.peer_id, {})
+@inject
+async def defect(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
+    ctx_storage.set(message.peer_id, {})
     await message.answer("Начат процесс создания проблемы", keyboard=KEYBOARD_DEFECT)
 
 KEYBOARD_DEFECT_TYPE = (
@@ -57,20 +61,33 @@ async def defect_type(message: Message) -> None:
     await message.answer("Опишите тип проблемы", keyboard=KEYBOARD_DEFECT_TYPE)
 
 @defect_labeler.message(payload_contains={"command": "defect_set_type"})
-async def defect_set_type(message: Message) -> None:
+@inject
+async def defect_set_type(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+) -> None:
     payload: dict = message.get_payload_json()
-    defect: dict = CtxStorage().get(message.peer_id)
+    defect: dict = ctx_storage.get(message.peer_id)
     defect["defect_type"] = payload["type"]
     await message.answer("Тип проблемы сохранён", keyboard=KEYBOARD_DEFECT)
 
 @defect_labeler.message(payload={"command": "defect_description"})
-async def defect_description(message: Message) -> None:
+@inject
+async def defect_description(
+    message: Message,
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+) -> None:
     await state_dispenser.set(message.peer_id, DefectState.PENDING_DESCRIPTION)
     await message.answer("Задайте описание проблемы", keyboard=KEYBOARD_EMPTY)
 
 @defect_labeler.message(state=DefectState.PENDING_DESCRIPTION)
-async def defect_description(message: Message) -> None:
-    defect: dict = CtxStorage().get(message.peer_id)
+@inject
+async def defect_description(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+    state_dispenser: BuiltinStateDispenser = Provide[Container.state_dispenser],
+) -> None:
+    defect: dict = ctx_storage.get(message.peer_id)
     if len(message.text) > 512:
         await message.answer(
             "Слишком длинное описание! Максимальная длина сообщения - 512 символов",
@@ -92,8 +109,14 @@ def build_accept_keyboard(defect_id: int) -> str:
     )
 
 @defect_labeler.message(payload={"command": "defect_done"})
-async def defect_done(message: Message) -> None:
-    defect: dict = CtxStorage().get(message.peer_id)
+@inject
+async def defect_done(
+    message: Message,
+    ctx_storage: CtxStorage = Provide[Container.ctx_storage],
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+    api: API = Provide[Container.api],
+) -> None:
+    defect: dict = ctx_storage.get(message.peer_id)
 
     if not("defect_type" in defect):
         await message.answer("Не задан тип проблемы!", keyboard=KEYBOARD_DEFECT)
@@ -102,8 +125,6 @@ async def defect_done(message: Message) -> None:
     if not("description" in defect):
         await message.answer("Не задано описание проблемы!", keyboard=KEYBOARD_DEFECT)
         return
-
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
 
     res: apiv1.CreateDefectResponse = await stub.CreateDefect(
         apiv1.CreateDefectRequest(
@@ -137,7 +158,13 @@ def build_resolved_keyboard(defect_id: int) -> str:
         .get_json()
     )
 
-async def notify_effective_user(effective_user_id: int, defect_id: str, status: str) -> None:
+@inject
+async def notify_effective_user(
+    effective_user_id: int,
+    defect_id: str,
+    status: str,
+    api: API = Provide[Container.api],
+) -> None:
     await api.messages.send(
         user_id=effective_user_id,
         message=f"Статус проблемы {defect_id} изменен на {status}",
@@ -145,10 +172,13 @@ async def notify_effective_user(effective_user_id: int, defect_id: str, status: 
     )
 
 @defect_labeler.message(payload_contains={"command": "defect_accept"})
-async def defect_accept(message: Message) -> None:
+@inject
+async def defect_accept(
+    message: Message,
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+) -> None:
     payload = message.get_payload_json()
 
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     res: apiv1.GetDefectByIdResponse = await stub.GetDefectById(
         apiv1.GetDefectByIdRequest(
             defect_id=payload["defect_id"],
@@ -170,10 +200,13 @@ async def defect_accept(message: Message) -> None:
 
 
 @defect_labeler.message(payload_contains={"command": "defect_resolved"})
-async def defect_resolved(message: Message) -> None:
+@inject
+async def defect_resolved(
+    message: Message,
+    stub: apiv1grpc.DormybobaCoreStub = Provide[Container.dormyboba_core_stub],
+) -> None:
     payload = message.get_payload_json()
 
-    stub: apiv1grpc.DormybobaCoreStub = CtxStorage().get(STUB_KEY)
     res: apiv1.GetDefectByIdResponse = await stub.GetDefectById(
         apiv1.GetDefectByIdRequest(
             defect_id=payload["defect_id"],
