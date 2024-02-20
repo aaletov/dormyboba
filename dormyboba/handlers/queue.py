@@ -143,8 +143,8 @@ async def pending_close(
         close = datetime.strptime(message.text, '%H:%M:%S')
     except ValueError as ve1:
         print('ValueError 1:', ve1)
-        await state_dispenser.set(message.peer_id, QueueState.PENDING_OPEN)
-        await message.answer("Задайте время открытия очереди в формате 23:59:59",
+        await state_dispenser.set(message.peer_id, QueueState.PENDING_CLOSE)
+        await message.answer("Задайте время закрытия очереди в формате 23:59:59",
                              keyboard=KEYBOARD_EMPTY)
         return
 
