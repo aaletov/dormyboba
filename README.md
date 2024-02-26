@@ -10,6 +10,15 @@ export MULTIDICT_NO_EXTENSIONS=1
 poetry install
 ```
 
+## Local Development
+
+Необходимо указать переменную среды `CONFIG_DIR`, соответствующий директории, в которой
+лежат конфиги
+
+```bash
+CONFIG_DIR=./config poetry run python3 -m dormyboba
+```
+
 ### Coverage:
 
 ```bash

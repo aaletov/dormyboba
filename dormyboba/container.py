@@ -1,12 +1,16 @@
+import os
+from pathlib import Path
 from dependency_injector import containers, providers
-from vkbottle import Bot, API, BuiltinStateDispenser, CtxStorage
+from vkbottle import API, BuiltinStateDispenser, CtxStorage
 from vkbottle.bot import BotLabeler
 import grpc
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 
+CONFIG_DIR = Path(os.getenv("CONFIG_DIR")).resolve()
+
 class Container(containers.DeclarativeContainer):
 
-    config = providers.Configuration(yaml_files=["/workspaces/dormyboba-project/dormyboba/config/config.yaml"])
+    config = providers.Configuration(yaml_files=[CONFIG_DIR / "config.yaml"])
 
     api = providers.Singleton(
         API,
