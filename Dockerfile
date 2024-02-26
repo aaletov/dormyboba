@@ -1,13 +1,15 @@
-FROM python:3.12-bookworm as builder
-RUN curl -sSL https://install.python-poetry.org | python3 -
+FROM python:3.10.13-slim-bookworm as builder
+RUN apt-get update && apt-get install -y curl && \
+    curl -sSL https://install.python-poetry.org | python3 -
 WORKDIR /usr/src/dormyboba
 COPY . ./
-RUN ${HOME}/.local/bin/poetry build
-FROM python:3.12-bookworm
+RUN export POETRY=${HOME}/.local/bin/poetry && \
+    ${POETRY} config virtualenvs.in-project true && \
+    ${POETRY} install
+FROM python:3.10.13-slim-bookworm
 WORKDIR /app
-COPY --from=builder /usr/src/dormyboba/dist ./
-COPY config /config
-RUN export WHL=$(ls *.whl) && pip install ./${WHL}
-EXPOSE 50051
 ENV CONFIG_DIR "/config"
-CMD ["python3", "-m", "dormyboba"]
+COPY --from=builder /usr/src/dormyboba/ ./
+COPY config ${CONFIG_DIR}
+EXPOSE 50051
+CMD ["/app/.venv/bin/python3", "-m", "dormyboba"]
