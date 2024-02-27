@@ -5,7 +5,7 @@ services:
     image: "dormyboba:latest"
     depends_on:
       dormyboba_core:
-        condition: service_started
+        condition: service_healthy
   dormyboba_core:
     image: "dormyboba-core:latest"
     ports:
