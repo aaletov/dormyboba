@@ -11,6 +11,4 @@ FROM python:3.10.13-slim-bookworm
 WORKDIR /app
 ENV CONFIG_DIR "/config"
 COPY --from=builder /usr/src/dormyboba/ ./
-COPY config ${CONFIG_DIR}
-EXPOSE 50051
 CMD ["/app/.venv/bin/python3", "-m", "dormyboba"]
