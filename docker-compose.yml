@@ -3,11 +3,15 @@ version: "3.1"
 services:
   dormyboba:
     image: "dormyboba:latest"
+    volumes:
+      - /path/to/dormyboba_config:/config
     depends_on:
       dormyboba_core:
         condition: service_healthy
   dormyboba_core:
     image: "dormyboba-core:latest"
+    volumes:
+      - /path/to/dormyboba_core_config:/config
     ports:
       - "50051:50051"
       - "8000:8000"
