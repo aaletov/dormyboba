@@ -32,7 +32,7 @@ puml-all: $(hld_svgs)
 .PHONY: docs
 docs: bpmn-all puml-all
 
-image_time=$(shell date +%s)
+image_time=$(shell git rev-parse --short HEAD)
 .PHONY: docker-image
 docker-image:
 	docker build -t dormyboba:${image_time} .
