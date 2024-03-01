@@ -1,0 +1,4 @@
+dormyboba:
+  addr: '<self_addr>'
+  core_addr: '<dormyboba_core_service_addr>'
+  vk_token: '<vk_token>'
