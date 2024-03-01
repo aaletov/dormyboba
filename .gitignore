@@ -160,8 +160,6 @@ cython_debug/
 #.idea/
 
 .devcontainer
-
-config.yaml
-
-service_account.json
 .coveragerc
+
+develop_config
