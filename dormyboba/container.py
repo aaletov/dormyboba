@@ -6,7 +6,7 @@ from vkbottle.bot import BotLabeler
 import grpc
 import dormyboba_api.v1api_pb2_grpc as apiv1grpc
 
-CONFIG_DIR = Path(os.getenv("CONFIG_DIR")).resolve()
+CONFIG_DIR = Path(os.getenv("CONFIG_DIR"), default="").resolve()
 
 class Container(containers.DeclarativeContainer):
 
