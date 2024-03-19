@@ -24,3 +24,4 @@ CONFIG_DIR=./config poetry run python3 -m dormyboba
 ```bash
 poetry run pytest --cov=dormyboba --cov-report term-missing
 ```
+cool
