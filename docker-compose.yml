@@ -14,7 +14,6 @@ services:
     networks:
       - dormyboba_default
     ports:
-      - "50051:50051"
       - "8000:8000"
     volumes:
       - ${DORMYBOBA_CORE_CONFIG}:/config
