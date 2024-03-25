@@ -37,3 +37,22 @@ image_time=$(shell git rev-parse --short HEAD)
 docker-image:
 	docker build -t dormyboba:${image_time} .
 	docker tag dormyboba:${image_time} dormyboba:latest
+
+WHOAMI=$(shell whoami)
+.PHONY: docker-compose-up
+docker-compose-up:
+ifeq (${WHOAMI},vscode)
+	export DORMYBOBA_CONFIG="${LOCAL_WORKSPACE_FOLDER}\dormyboba\develop_config"; \
+	export DORMYBOBA_CORE_CONFIG="${LOCAL_WORKSPACE_FOLDER}\dormyboba-core\develop_config"; \
+	export DB_INIT="${LOCAL_WORKSPACE_FOLDER}\dormyboba-core\db"; \
+	docker-compose up
+endif
+
+.PHONY: docker-compose-rm
+docker-compose-rm:
+ifeq (${WHOAMI},vscode)
+	export DORMYBOBA_CONFIG="${LOCAL_WORKSPACE_FOLDER}\dormyboba\develop_config"; \
+	export DORMYBOBA_CORE_CONFIG="${LOCAL_WORKSPACE_FOLDER}\dormyboba-core\develop_config"; \
+	export DB_INIT="${LOCAL_WORKSPACE_FOLDER}\dormyboba-core\db"; \
+	docker-compose rm --volumes -f
+endif

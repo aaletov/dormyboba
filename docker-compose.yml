@@ -3,21 +3,38 @@ version: "3.1"
 services:
   dormyboba:
     image: "dormyboba:latest"
+    networks:
+      - dormyboba_default
+    environment:
+      TZ: "Europe/Moscow"
     volumes:
-      - /path/to/dormyboba_config:/config
+      - ${DORMYBOBA_CONFIG}:/config
     depends_on:
-      dormyboba_core:
-        condition: service_healthy
+      - dormyboba_core
   dormyboba_core:
     image: "dormyboba-core:latest"
-    volumes:
-      - /path/to/dormyboba_core_config:/config
+    networks:
+      - dormyboba_default
     ports:
-      - "50051:50051"
       - "8000:8000"
+    environment:
+      TZ: "Europe/Moscow"
+    volumes:
+      - ${DORMYBOBA_CORE_CONFIG}:/config
+    depends_on:
+      - postgresql
   postgresql:
     image: "postgres:15.5-alpine3.18"
+    networks:
+      - dormyboba_default
     ports:
       - "5432:5432"
     environment:
-     POSTGRES_PASSWORD: "${PG_PASSWORD}"
+      POSTGRES_PASSWORD: "123456"
+      TZ: "Europe/Moscow"
+      PGTZ: "Europe/Moscow"
+    volumes:
+      - ${DB_INIT}:/docker-entrypoint-initdb.d
+
+networks:
+  dormyboba_default:
